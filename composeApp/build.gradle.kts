@@ -58,7 +58,10 @@ kotlin {
 
         jvmMain.dependencies {
             implementation(compose.desktop.currentOs)
-            implementation(libs.kotlinxCoroutinesSwing)
+            implementation(libs.kotlinxDatetime)
+            implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.1")
+            implementation(libs.composeRuntime)
+            implementation(libs.composeFoundation)
         }
     }
 }

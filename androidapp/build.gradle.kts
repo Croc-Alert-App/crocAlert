@@ -63,7 +63,10 @@ kotlin {
 
         jvmMain.dependencies {
             implementation(compose.desktop.currentOs)
-            implementation(libs.kotlinxCoroutinesSwing)
+            implementation(libs.kotlinxDatetime)
+            implementation(libs.kotlinxCoroutinesCore)
+            implementation(libs.composeRuntime)
+            implementation(libs.composeFoundation)
         }
     }
 }
