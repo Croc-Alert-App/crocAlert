@@ -3,7 +3,7 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
-    alias(libs.plugins.androidLibrary)
+    alias(libs.plugins.androidLibrary) // composeApp debe ser library
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
 }
@@ -15,7 +15,6 @@ kotlin {
         }
     }
 
-    // iOS (en Windows se deshabilitan, está bien)
     listOf(
         iosArm64(),
         iosSimulatorArm64()
@@ -40,6 +39,7 @@ kotlin {
             implementation(libs.composeMaterial3)
             implementation(libs.composeUi)
             implementation(libs.composeComponentsResources)
+            implementation(libs.composeUiToolingPreview)
 
             implementation(libs.androidxLifecycleViewmodelCompose)
             implementation(libs.androidxLifecycleRuntimeCompose)
@@ -47,13 +47,18 @@ kotlin {
             implementation(libs.kotlinxDatetime)
 
             implementation(project.dependencies.platform(libs.koinBom))
-            implementation(libs.koinCore)
             implementation(libs.koinCompose)
             implementation(libs.koinComposeViewmodelNavigation)
+
+            // Si realmente usas el módulo shared:
+            // implementation(project(":shared"))
         }
 
         commonTest.dependencies {
+            // en tu TOML está definido como "kotlin-test"
             implementation(libs.kotlin.test)
+            // si te da issue, usa:
+            // implementation(libs.kotlin.testJunit)
         }
 
         jvmMain.dependencies {
@@ -65,12 +70,15 @@ kotlin {
 
 android {
     namespace = "crocalert.app"
+
+    // en tu TOML NO existen android.compileSdk/minSdk/targetSdk,
+    // existen androidCompileSdk/androidMinSdk/androidTargetSdk
     compileSdk = libs.versions.androidCompileSdk.get().toInt()
 
     defaultConfig {
         minSdk = libs.versions.androidMinSdk.get().toInt()
-        // targetSdk en library es deprecado, puedes quitarlo sin problema:
-        // targetSdk = libs.versions.androidTargetSdk.get().toInt()
+        // targetSdk en library está deprecado, pero si quieres dejarlo:
+        targetSdk = libs.versions.androidTargetSdk.get().toInt()
     }
 
     packaging {

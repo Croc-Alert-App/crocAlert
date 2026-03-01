@@ -29,12 +29,14 @@ kotlin {
 
 android {
     namespace = "crocalert.app.shared"
-    compileSdk = libs.versions.android.compileSdk.get().toInt()
+    compileSdk = libs.versions.androidCompileSdk.get().toInt()
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
+
     defaultConfig {
-        minSdk = libs.versions.android.minSdk.get().toInt()
+        minSdk = libs.versions.androidMinSdk.get().toInt()
     }
 }
