@@ -3,34 +3,47 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
-    alias(libs.plugins.androidLibrary) // composeApp debe ser library
+    alias(libs.plugins.androidLibrary)
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
 }
 
 kotlin {
+
     androidTarget {
         compilerOptions {
             jvmTarget.set(JvmTarget.JVM_11)
         }
     }
 
-    listOf(
-        iosArm64(),
-        iosSimulatorArm64()
-    ).forEach { iosTarget ->
-        iosTarget.binaries.framework {
-            baseName = "ComposeApp"
-            isStatic = true
+    // ✅ IMPORTANTE: NO declarar iOS en Windows
+    val isWindows = System.getProperty("os.name").lowercase().contains("windows")
+
+    if (!isWindows) {
+        listOf(
+            iosArm64(),
+            iosSimulatorArm64()
+        ).forEach { iosTarget ->
+            iosTarget.binaries.framework {
+                baseName = "ComposeApp"
+                isStatic = true
+            }
         }
     }
 
     jvm()
 
     sourceSets {
+
         androidMain.dependencies {
-            implementation(libs.composeUiToolingPreview)
             implementation(libs.androidxActivityCompose)
+
+            // Lifecycle SOLO Android
+            implementation(libs.androidxLifecycleViewmodelCompose)
+            implementation(libs.androidxLifecycleRuntimeCompose)
+
+            // Koin Android Compose (NO navigation artifact raro)
+            implementation("io.insert-koin:koin-androidx-compose:3.5.6")
         }
 
         commonMain.dependencies {
@@ -39,26 +52,21 @@ kotlin {
             implementation(libs.composeMaterial3)
             implementation(libs.composeUi)
             implementation(libs.composeComponentsResources)
-            implementation(libs.composeUiToolingPreview)
-
-            implementation(libs.androidxLifecycleViewmodelCompose)
-            implementation(libs.androidxLifecycleRuntimeCompose)
 
             implementation(libs.kotlinxDatetime)
 
+            // Koin multiplataforma
             implementation(project.dependencies.platform(libs.koinBom))
+            implementation(libs.koinCore)
             implementation(libs.koinCompose)
-            implementation(libs.koinComposeViewmodelNavigation)
 
-            // Si realmente usas el módulo shared:
-            // implementation(project(":shared"))
+            // ❌ ELIMINADO:
+            // implementation(libs.koinComposeViewmodelNavigation)
+            // implementation(libs.composeUiToolingPreview)
         }
 
         commonTest.dependencies {
-            // en tu TOML está definido como "kotlin-test"
             implementation(libs.kotlin.test)
-            // si te da issue, usa:
-            // implementation(libs.kotlin.testJunit)
         }
 
         jvmMain.dependencies {
@@ -74,13 +82,10 @@ kotlin {
 android {
     namespace = "crocalert.app"
 
-    // en tu TOML NO existen android.compileSdk/minSdk/targetSdk,
-    // existen androidCompileSdk/androidMinSdk/androidTargetSdk
     compileSdk = libs.versions.androidCompileSdk.get().toInt()
 
     defaultConfig {
         minSdk = libs.versions.androidMinSdk.get().toInt()
-        // targetSdk en library está deprecado, pero si quieres dejarlo:
         targetSdk = libs.versions.androidTargetSdk.get().toInt()
     }
 
@@ -96,8 +101,13 @@ android {
     }
 }
 
+/**
+ * Tooling SOLO Android
+ * Nunca en commonMain
+ */
 dependencies {
-    debugImplementation(libs.composeUiTooling)
+    implementation("org.jetbrains.compose.ui:ui-tooling-preview:1.6.11")
+    debugImplementation("org.jetbrains.compose.ui:ui-tooling:1.6.11")
 }
 
 compose.desktop {

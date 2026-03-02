@@ -15,14 +15,17 @@ kotlin {
         }
     }
 
-    // iOS (en Windows se deshabilitan, está bien)
-    listOf(
-        iosArm64(),
-        iosSimulatorArm64()
-    ).forEach { iosTarget ->
-        iosTarget.binaries.framework {
-            baseName = "ComposeApp"
-            isStatic = true
+    // ✅ En Windows NO se declaran targets iOS (evita iosArm64Main/iosSimulatorArm64Main errors)
+    val isWindows = System.getProperty("os.name").lowercase().contains("windows")
+    if (!isWindows) {
+        listOf(
+            iosArm64(),
+            iosSimulatorArm64()
+        ).forEach { iosTarget ->
+            iosTarget.binaries.framework {
+                baseName = "ComposeApp"
+                isStatic = true
+            }
         }
     }
 
@@ -30,8 +33,16 @@ kotlin {
 
     sourceSets {
         androidMain.dependencies {
-            implementation(libs.composeUiToolingPreview)
             implementation(libs.androidxActivityCompose)
+
+            // ✅ Lifecycle Compose SOLO Android
+            implementation(libs.androidxLifecycleViewmodelCompose)
+            implementation(libs.androidxLifecycleRuntimeCompose)
+
+            // ✅ Koin Android Compose (Android-only)
+            // Usa tu alias si existe; si no existe, deja el string directo.
+            // implementation(libs.koinAndroidxCompose)
+            implementation("io.insert-koin:koin-androidx-compose:3.5.6")
         }
 
         commonMain.dependencies {
@@ -41,15 +52,15 @@ kotlin {
             implementation(libs.composeUi)
             implementation(libs.composeComponentsResources)
 
-            implementation(libs.androidxLifecycleViewmodelCompose)
-            implementation(libs.androidxLifecycleRuntimeCompose)
-
             implementation(libs.kotlinxDatetime)
 
+            // ✅ Koin multiplataforma (OK en common)
             implementation(project.dependencies.platform(libs.koinBom))
             implementation(libs.koinCore)
             implementation(libs.koinCompose)
-            implementation(libs.koinComposeViewmodelNavigation)
+
+            // ❌ NO: koin-compose-viewmodel-navigation (da errores en iOS/JVM)
+            // implementation(libs.koinComposeViewmodelNavigation)
         }
 
         commonTest.dependencies {
@@ -88,8 +99,14 @@ android {
     }
 }
 
+/**
+ * ✅ Tooling/Preview SOLO para Android.
+ * Se define aquí (a nivel módulo) para evitar que Gradle lo intente resolver para iOS/JVM.
+ */
 dependencies {
-    debugImplementation(libs.composeUiTooling)
+    // Solo Android: preview + tooling
+    implementation("org.jetbrains.compose.ui:ui-tooling-preview:1.6.11")
+    debugImplementation("org.jetbrains.compose.ui:ui-tooling:1.6.11")
 }
 
 compose.desktop {
