@@ -1,4 +1,4 @@
-package crocalert.server.dto
+package crocalert.server.routes
 
 import kotlinx.serialization.Serializable
 

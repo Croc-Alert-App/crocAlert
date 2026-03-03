@@ -1,7 +1,7 @@
 package crocalert.app.shared.network
 
 object ApiRoutes {
-    private const val BASE = "https://your-api.com"
-
-    const val ALERTS = "$BASE/alerts"
+    // En emulador Android: 10.0.2.2 apunta a tu PC
+    var BASE: String = "http://10.0.2.2:8080"
+    val ALERTS: String get() = "$BASE/alerts"
 }

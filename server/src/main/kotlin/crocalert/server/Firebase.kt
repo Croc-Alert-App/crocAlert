@@ -9,7 +9,8 @@ import java.io.FileInputStream
 object FirebaseInit {
 
     fun init() {
-        val serviceAccount = FileInputStream("server/firebase/serviceAccountKey.json")
+        val serviceAccount = FirebaseInit::class.java.getResourceAsStream("/firebase/serviceAccountKey.json")
+            ?: error("No se encontró /firebase/serviceAccountKey.json en resources")
 
         val options = FirebaseOptions.builder()
             .setCredentials(GoogleCredentials.fromStream(serviceAccount))

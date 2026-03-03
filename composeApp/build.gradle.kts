@@ -15,7 +15,6 @@ kotlin {
         }
     }
 
-    // ✅ En Windows NO se declaran targets iOS (evita iosArm64Main/iosSimulatorArm64Main errors)
     val isWindows = System.getProperty("os.name").lowercase().contains("windows")
     if (!isWindows) {
         listOf(
@@ -35,13 +34,11 @@ kotlin {
         androidMain.dependencies {
             implementation(libs.androidxActivityCompose)
 
-            // ✅ Lifecycle Compose SOLO Android
+
             implementation(libs.androidxLifecycleViewmodelCompose)
             implementation(libs.androidxLifecycleRuntimeCompose)
 
-            // ✅ Koin Android Compose (Android-only)
-            // Usa tu alias si existe; si no existe, deja el string directo.
-            // implementation(libs.koinAndroidxCompose)
+
             implementation("io.insert-koin:koin-androidx-compose:3.5.6")
         }
 
@@ -54,13 +51,12 @@ kotlin {
 
             implementation(libs.kotlinxDatetime)
 
-            // ✅ Koin multiplataforma (OK en common)
+
             implementation(project.dependencies.platform(libs.koinBom))
             implementation(libs.koinCore)
             implementation(libs.koinCompose)
 
-            // ❌ NO: koin-compose-viewmodel-navigation (da errores en iOS/JVM)
-            // implementation(libs.koinComposeViewmodelNavigation)
+
         }
 
         commonTest.dependencies {
@@ -70,9 +66,13 @@ kotlin {
         jvmMain.dependencies {
             implementation(compose.desktop.currentOs)
             implementation(libs.kotlinxDatetime)
-            implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.1")
+            implementation(libs.kotlinxCoroutinesCore)
             implementation(libs.composeRuntime)
             implementation(libs.composeFoundation)
+            implementation("io.ktor:ktor-client-core:2.3.12")
+            implementation("io.ktor:ktor-client-content-negotiation:2.3.12")
+            implementation("io.ktor:ktor-serialization-kotlinx-json:2.3.12")
+            implementation("io.ktor:ktor-client-cio:2.3.12")
         }
     }
 }
@@ -83,8 +83,7 @@ android {
 
     defaultConfig {
         minSdk = libs.versions.androidMinSdk.get().toInt()
-        // targetSdk en library es deprecado, puedes quitarlo sin problema:
-        // targetSdk = libs.versions.androidTargetSdk.get().toInt()
+
     }
 
     packaging {
