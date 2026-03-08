@@ -7,7 +7,7 @@ import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 
-@Composables
+@Composable
 internal actual fun platformColorScheme(darkTheme: Boolean, dynamicColor: Boolean): ColorScheme =
     when {
         dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
