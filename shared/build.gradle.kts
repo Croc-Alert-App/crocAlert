@@ -8,22 +8,31 @@ plugins {
 
 kotlin {
     androidTarget {
+        publishLibraryVariants("release", "debug")
         compilerOptions {
             jvmTarget.set(JvmTarget.JVM_11)
         }
     }
 
-    iosArm64()
-    iosSimulatorArm64()
+    val isWindows = System.getProperty("os.name").lowercase().contains("windows")
+    if (!isWindows) {
+        listOf(
+            iosArm64(),
+            iosSimulatorArm64()
+        ).forEach { iosTarget ->
+            iosTarget.binaries.framework {
+                baseName = "Shared"
+                isStatic = true
+            }
+        }
+    }
 
     jvm()
 
     sourceSets {
         commonMain.dependencies {
-
             implementation(libs.kotlinxCoroutinesCore)
             implementation(libs.kotlinxDatetime)
-
 
             implementation("io.ktor:ktor-client-core:2.3.12")
             implementation("io.ktor:ktor-client-content-negotiation:2.3.12")
@@ -31,15 +40,18 @@ kotlin {
             implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
         }
 
-
         androidMain.dependencies {
             implementation("io.ktor:ktor-client-android:2.3.12")
         }
-        iosMain.dependencies {
-            implementation("io.ktor:ktor-client-darwin:2.3.12")
-        }
+
         jvmMain.dependencies {
             implementation("io.ktor:ktor-client-cio:2.3.12")
+        }
+
+        if (!isWindows) {
+            getByName("iosMain").dependencies {
+                implementation("io.ktor:ktor-client-darwin:2.3.12")
+            }
         }
 
         commonTest.dependencies {

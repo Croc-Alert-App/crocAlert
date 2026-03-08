@@ -24,6 +24,7 @@ androidxLifecycle = "2.8.0"
 
 # Tests
 junit = "4.13.2"
+material3Android = "1.4.0"
 
 [libraries]
 # ---------- Android core ----------
@@ -72,6 +73,7 @@ kotlin-testJunit = { module = "org.jetbrains.kotlin:kotlin-test-junit", version.
 junit = { module = "junit:junit", version.ref = "junit" }
 androidxTestExtJunit = "androidx.test.ext:junit:1.1.5"
 androidxEspressoCore = "androidx.test.espresso:espresso-core:3.5.1"
+material3-android = { group = "androidx.compose.material3", name = "material3-android", version.ref = "material3Android" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }
