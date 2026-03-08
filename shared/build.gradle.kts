@@ -17,8 +17,7 @@ kotlin {
     val isWindows = System.getProperty("os.name").lowercase().contains("windows")
     if (!isWindows) {
         listOf(
-            iosArm64(),
-            iosSimulatorArm64()
+            iosX64(), iosArm64(), iosSimulatorArm64()
         ).forEach { iosTarget ->
             iosTarget.binaries.framework {
                 baseName = "Shared"
@@ -48,10 +47,8 @@ kotlin {
             implementation("io.ktor:ktor-client-cio:2.3.12")
         }
 
-        if (!isWindows) {
-            getByName("iosMain").dependencies {
-                implementation("io.ktor:ktor-client-darwin:2.3.12")
-            }
+        iosMain.dependencies {
+            implementation("io.ktor:ktor-client-darwin:2.3.12")
         }
 
         commonTest.dependencies {
