@@ -1,8 +1,7 @@
 package crocalert.server.service
 
 import crocalert.server.FirebaseInit
-import crocalert.server.routes.AlertDto
-import kotlinx.coroutines.future.await
+import crocalert.app.shared.data.dto.AlertDto
 import java.util.UUID
 
 class AlertService {
@@ -12,19 +11,50 @@ class AlertService {
 
     suspend fun getAll(): List<AlertDto> {
         val snap = col.get().get()
-        return snap.documents.mapNotNull { doc ->
-            doc.toObject(AlertDto::class.java)?.copy(id = doc.id)
+        return snap.documents.map { doc ->
+            AlertDto(
+                id = doc.id,
+                captureId = doc.getString("captureId") ?: "",
+                createdAt = doc.getLong("createdAt") ?: 0L,
+                status = doc.getString("status") ?: "OPEN",
+                priority = doc.getString("priority") ?: "MEDIUM",
+                assignedToUserId = doc.getString("assignedToUserId"),
+                closedAt = doc.getLong("closedAt"),
+                notes = doc.getString("notes"),
+                title = doc.getString("title") ?: ""
+            )
         }
     }
 
     suspend fun getById(id: String): AlertDto? {
         val doc = col.document(id).get().get()
-        return if (doc.exists()) doc.toObject(AlertDto::class.java)?.copy(id = doc.id) else null
+        if (!doc.exists()) return null
+
+        return AlertDto(
+            id = doc.id,
+            captureId = doc.getString("captureId") ?: "",
+            createdAt = doc.getLong("createdAt") ?: 0L,
+            status = doc.getString("status") ?: "OPEN",
+            priority = doc.getString("priority") ?: "MEDIUM",
+            assignedToUserId = doc.getString("assignedToUserId"),
+            closedAt = doc.getLong("closedAt"),
+            notes = doc.getString("notes"),
+            title = doc.getString("title") ?: ""
+        )
     }
 
     suspend fun create(dto: AlertDto): String {
         val id = dto.id.takeIf { it.isNotBlank() } ?: UUID.randomUUID().toString()
-        col.document(id).set(dto.copy(id = id)).get()
+
+        val normalized = dto.copy(
+            id = id,
+            captureId = dto.captureId.ifBlank { "" },
+            createdAt = if (dto.createdAt == 0L) System.currentTimeMillis() else dto.createdAt,
+            status = dto.status.ifBlank { "OPEN" },
+            priority = dto.priority.ifBlank { "MEDIUM" }
+        )
+
+        col.document(id).set(normalized).get()
         return id
     }
 
@@ -32,7 +62,16 @@ class AlertService {
         val ref = col.document(id)
         val current = ref.get().get()
         if (!current.exists()) return false
-        ref.set(dto.copy(id = id)).get()
+
+        val normalized = dto.copy(
+            id = id,
+            captureId = dto.captureId.ifBlank { "" },
+            createdAt = if (dto.createdAt == 0L) System.currentTimeMillis() else dto.createdAt,
+            status = dto.status.ifBlank { "OPEN" },
+            priority = dto.priority.ifBlank { "MEDIUM" }
+        )
+
+        ref.set(normalized).get()
         return true
     }
 

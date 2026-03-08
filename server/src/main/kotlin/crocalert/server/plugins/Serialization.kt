@@ -13,6 +13,8 @@ fun Application.configureSerialization() {
                 isLenient = true
                 ignoreUnknownKeys = true
                 explicitNulls = false
+                ignoreUnknownKeys = true
+                encodeDefaults = true
             }
         )
     }

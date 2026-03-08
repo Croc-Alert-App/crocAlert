@@ -4,11 +4,12 @@ import com.google.auth.oauth2.GoogleCredentials
 import com.google.firebase.FirebaseApp
 import com.google.firebase.FirebaseOptions
 import com.google.firebase.cloud.FirestoreClient
-import java.io.FileInputStream
 
 object FirebaseInit {
 
     fun init() {
+        if (FirebaseApp.getApps().isNotEmpty()) return
+
         val serviceAccount = FirebaseInit::class.java.getResourceAsStream("/firebase/serviceAccountKey.json")
             ?: error("No se encontró /firebase/serviceAccountKey.json en resources")
 
@@ -17,6 +18,7 @@ object FirebaseInit {
             .build()
 
         FirebaseApp.initializeApp(options)
+        println("Firebase inicializado correctamente")
     }
 
     fun firestore() = FirestoreClient.getFirestore()
