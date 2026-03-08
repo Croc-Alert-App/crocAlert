@@ -3,13 +3,14 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
-    alias(libs.plugins.androidLibrary)
+    alias(libs.plugins.androidLibrary)        // library — consumed by :androidapp (Android) and desktop jvm()
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
 }
 
 kotlin {
     androidTarget {
+        publishLibraryVariants("release", "debug")
         compilerOptions {
             jvmTarget.set(JvmTarget.JVM_11)
         }
@@ -33,30 +34,26 @@ kotlin {
     sourceSets {
         androidMain.dependencies {
             implementation(libs.androidxActivityCompose)
-
-
             implementation(libs.androidxLifecycleViewmodelCompose)
             implementation(libs.androidxLifecycleRuntimeCompose)
-
-
+            implementation(libs.composeUiToolingPreview)
             implementation("io.insert-koin:koin-androidx-compose:3.5.6")
         }
 
         commonMain.dependencies {
+            implementation(project(":shared"))
+
             implementation(libs.composeRuntime)
             implementation(libs.composeFoundation)
             implementation(libs.composeMaterial3)
             implementation(libs.composeUi)
             implementation(libs.composeComponentsResources)
-
             implementation(libs.kotlinxDatetime)
-
+            implementation(libs.kotlinxCoroutinesCore)
 
             implementation(project.dependencies.platform(libs.koinBom))
             implementation(libs.koinCore)
             implementation(libs.koinCompose)
-
-
         }
 
         commonTest.dependencies {
@@ -65,14 +62,6 @@ kotlin {
 
         jvmMain.dependencies {
             implementation(compose.desktop.currentOs)
-            implementation(libs.kotlinxDatetime)
-            implementation(libs.kotlinxCoroutinesCore)
-            implementation(libs.composeRuntime)
-            implementation(libs.composeFoundation)
-            implementation("io.ktor:ktor-client-core:2.3.12")
-            implementation("io.ktor:ktor-client-content-negotiation:2.3.12")
-            implementation("io.ktor:ktor-serialization-kotlinx-json:2.3.12")
-            implementation("io.ktor:ktor-client-cio:2.3.12")
         }
     }
 }
@@ -83,7 +72,6 @@ android {
 
     defaultConfig {
         minSdk = libs.versions.androidMinSdk.get().toInt()
-
     }
 
     packaging {
@@ -98,14 +86,8 @@ android {
     }
 }
 
-/**
- * ✅ Tooling/Preview SOLO para Android.
- * Se define aquí (a nivel módulo) para evitar que Gradle lo intente resolver para iOS/JVM.
- */
 dependencies {
-    // Solo Android: preview + tooling
-    implementation("org.jetbrains.compose.ui:ui-tooling-preview:1.6.11")
-    debugImplementation("org.jetbrains.compose.ui:ui-tooling:1.6.11")
+    debugImplementation(libs.composeUiTooling)
 }
 
 compose.desktop {

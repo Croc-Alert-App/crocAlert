@@ -20,8 +20,6 @@ android {
         compose = true
     }
 
-
-
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
@@ -33,15 +31,10 @@ android {
 }
 
 dependencies {
+    // composeApp is now an androidLibrary — valid as a dependency
+    implementation(project(":composeApp"))
+    // shared is implementation-scoped in :composeApp so must be added here for ApiRoutes access
     implementation(project(":shared"))
+    // activity-compose provides setContent / enableEdgeToEdge for this app module
     implementation("androidx.activity:activity-compose:1.9.0")
-    implementation("androidx.compose.ui:ui:1.6.7")
-    implementation("androidx.compose.material3:material3:1.2.1")
-    implementation("androidx.compose.ui:ui-tooling-preview:1.6.7")
-    debugImplementation("androidx.compose.ui:ui-tooling:1.6.7")
-    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.2")
-    implementation("io.ktor:ktor-client-core:2.3.12")
-    implementation("io.ktor:ktor-client-android:2.3.12")
-    implementation("io.ktor:ktor-client-content-negotiation:2.3.12")
-    implementation("io.ktor:ktor-serialization-kotlinx-json:2.3.12")
 }
