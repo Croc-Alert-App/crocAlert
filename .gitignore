@@ -2,6 +2,8 @@
 .kotlin
 .gradle
 **/build/
+**/bin/
+**/bin/
 xcuserdata
 !src/**/build/
 local.properties
@@ -17,3 +19,16 @@ captures
 !*.xcworkspace/contents.xcworkspacedata
 **/xcshareddata/WorkspaceSettings.xcsettings
 node_modules/
+# Keys
+serviceAccountKey.json
+*.env
+*.env.local
+google-services.json
+GoogleService-Info.plist
+# Cursor
+.cursor/
+# Bmad
+_bmad-output/
+_bmad/
+# Docs
+docs/diagrams/
