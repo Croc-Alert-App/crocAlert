@@ -69,6 +69,7 @@ koinComposeViewmodelNavigation = { module = "io.insert-koin:koin-compose-viewmod
 # ---------- Tests ----------
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
 kotlin-testJunit = { module = "org.jetbrains.kotlin:kotlin-test-junit", version.ref = "kotlin" }
+kotlinxCoroutinesTest = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "kotlinxCoroutines" }
 junit = { module = "junit:junit", version.ref = "junit" }
 androidxTestExtJunit = "androidx.test.ext:junit:1.1.5"
 androidxEspressoCore = "androidx.test.espresso:espresso-core:3.5.1"
