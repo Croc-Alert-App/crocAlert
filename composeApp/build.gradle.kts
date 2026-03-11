@@ -38,6 +38,7 @@ kotlin {
             implementation(libs.androidxLifecycleRuntimeCompose)
             implementation(libs.composeUiToolingPreview)
             implementation("io.insert-koin:koin-androidx-compose:3.5.6")
+            implementation(libs.kotlinx.coroutines.android)
         }
 
         commonMain.dependencies {
@@ -63,6 +64,7 @@ kotlin {
 
         jvmMain.dependencies {
             implementation(compose.desktop.currentOs)
+            implementation(libs.kotlinx.coroutines.swing)
         }
     }
 }

@@ -60,6 +60,9 @@ androidxLifecycleRuntimeCompose = "org.jetbrains.androidx.lifecycle:lifecycle-ru
 kotlinxDatetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "kotlinxDatetime" }
 kotlinxCoroutinesCore = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinxCoroutines" }
 
+kotlinx-coroutines-swing = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-swing", version.ref = "kotlinxCoroutines" }
+kotlinx-coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "kotlinxCoroutines" }
+
 # ---------- Koin ----------
 koinBom = { module = "io.insert-koin:koin-bom", version.ref = "koin" }
 koinCore = { module = "io.insert-koin:koin-core" }
