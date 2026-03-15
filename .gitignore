@@ -27,6 +27,8 @@ google-services.json
 GoogleService-Info.plist
 # Cursor
 .cursor/
+# Claude
+.claude/
 # Bmad
 _bmad-output/
 _bmad/
