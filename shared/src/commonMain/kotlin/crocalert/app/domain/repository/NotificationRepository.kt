@@ -1,9 +1,18 @@
 package crocalert.app.domain.repository
 
-import crocalert.app.model.AlertStatusHistory
+import crocalert.app.model.Notification
 import kotlinx.coroutines.flow.Flow
 
-interface AlertStatusHistoryRepository {
-    fun observeHistory(alertId: String): Flow<List<AlertStatusHistory>>
-    suspend fun append(history: AlertStatusHistory): String
+interface NotificationRepository {
+    fun observeNotifications(
+        alertId: String? = null,
+        userId: String? = null,
+        limit: Int = 100
+    ): Flow<List<Notification>>
+
+    fun observeNotification(notificationId: String): Flow<Notification?>
+
+    suspend fun createNotification(notification: Notification): String
+    suspend fun updateNotification(notification: Notification)
+    suspend fun deleteNotification(notificationId: String)
 }
