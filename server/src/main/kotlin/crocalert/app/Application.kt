@@ -2,8 +2,10 @@ package crocalert.app
 
 import crocalert.server.FirebaseInit
 import crocalert.server.routes.alertRoutes
+import crocalert.server.routes.cameraRoutes
 import crocalert.server.routes.captureRoutes
 import crocalert.server.service.AlertService
+import crocalert.server.service.CameraService
 import crocalert.server.service.CaptureService
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.*
@@ -30,6 +32,7 @@ fun Application.module() {
 
     val alertService = AlertService()
     val captureService = CaptureService()
+    val cameraService = CameraService()
 
     install(ContentNegotiation) {
         json(
@@ -47,5 +50,6 @@ fun Application.module() {
 
         alertRoutes(alertService)
         captureRoutes(captureService)
+        cameraRoutes(cameraService)
     }
 }

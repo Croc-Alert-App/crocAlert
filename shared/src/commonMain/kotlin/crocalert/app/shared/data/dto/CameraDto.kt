@@ -1,8 +1,9 @@
-package crocalert.app.model
+package crocalert.app.shared.data.dto
 
-import kotlinx.datetime.Instant
+import kotlinx.serialization.Serializable
 
-data class Camera(
+@Serializable
+data class CameraDto(
     val id: String = "",
     val name: String = "",
     val isActive: Boolean = true,

@@ -15,6 +15,14 @@ fun Route.captureRoutes(service: CaptureService) {
             call.respond(service.getAll())
         }
 
+        get("by-camera/{cameraId}") {
+            val cameraId = call.parameters["cameraId"]
+                ?: return@get call.respond(HttpStatusCode.BadRequest, "Missing cameraId")
+
+            val captures = service.getByCameraId(cameraId)
+            call.respond(captures)
+        }
+
         post {
             val dto = call.receive<CaptureDto>()
             val id = service.create(dto)
@@ -56,6 +64,14 @@ fun Route.captureRoutes(service: CaptureService) {
             } else {
                 call.respond(HttpStatusCode.NotFound, "Capture not found")
             }
+        }
+        get("/by-folder/{folder}") {
+            val folder = call.parameters["folder"]
+                ?: return@get call.respond(HttpStatusCode.BadRequest, "Missing folder")
+
+            val captures = service.getByFolder(folder)
+
+            call.respond(captures)
         }
     }
 }
