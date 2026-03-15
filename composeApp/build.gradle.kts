@@ -3,7 +3,7 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
-    alias(libs.plugins.androidLibrary)        // library — consumed by :androidapp (Android) and desktop jvm()
+    alias(libs.plugins.androidLibrary)        // library — consumed by :androidApp (Android) and desktop jvm()
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
 }

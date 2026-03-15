@@ -27,6 +27,6 @@ dependencyResolutionManagement {
 rootProject.name = "crocAlert"
 
 include(":composeApp")
-include(":androidapp")
+include(":androidApp")
 include(":shared")
 include(":server")
