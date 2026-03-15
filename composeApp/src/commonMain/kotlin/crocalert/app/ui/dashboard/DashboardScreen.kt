@@ -18,15 +18,13 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import crocalert.app.theme.CrocAmber
 import crocalert.app.theme.CrocBlue
 import crocalert.app.ui.components.BottomNavBar
@@ -36,33 +34,20 @@ import crocalert.app.ui.components.SyncBanner
 import crocalert.app.ui.components.SyncStatus
 
 @Composable
-fun DashboardScreen() {
-    var selectedTab by remember { mutableStateOf(DashboardTab.Home) }
-    var syncStatus by remember { mutableStateOf(SyncStatus.Syncing) }
-    var uiState by remember { mutableStateOf<DashboardUiState>(DashboardUiState.Loading) }
-    var lastSynced by remember { mutableStateOf("") }
-
-    // Replace DashboardMockData.load() with your repository call when the API is ready
-    LaunchedEffect(Unit) {
-        uiState = try {
-            val data = DashboardUiState.Success(DashboardMockData.load())
-            syncStatus = SyncStatus.Synced
-            lastSynced = "ahora mismo"
-            data
-        } catch (e: Exception) {
-            syncStatus = SyncStatus.Error
-            DashboardUiState.Error(e.message ?: "Error desconocido")
-        }
-    }
+fun DashboardScreen(viewModel: DashboardViewModel = viewModel { DashboardViewModel() }) {
+    val selectedTab by viewModel.selectedTab.collectAsState()
+    val syncStatus by viewModel.syncStatus.collectAsState()
+    val uiState by viewModel.uiState.collectAsState()
+    val lastSynced by viewModel.lastSynced.collectAsState()
 
     Scaffold(
-        bottomBar = { BottomNavBar(selected = selectedTab, onSelect = { selectedTab = it }) }
+        bottomBar = { BottomNavBar(selected = selectedTab, onSelect = viewModel::selectTab) }
     ) { innerPadding ->
         Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
             SyncBanner(
                 status = syncStatus,
                 lastUpdated = lastSynced,
-                onRetry = { syncStatus = SyncStatus.Syncing }
+                onRetry = viewModel::retry
             )
             when (val state = uiState) {
                 is DashboardUiState.Loading -> LoadingContent()
