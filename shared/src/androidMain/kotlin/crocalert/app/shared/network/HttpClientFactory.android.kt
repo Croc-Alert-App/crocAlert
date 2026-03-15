@@ -9,13 +9,11 @@ import kotlinx.serialization.json.Json
 actual object HttpClientFactory {
     actual fun create(): HttpClient = HttpClient(Android) {
         install(ContentNegotiation) {
-            json(
-                Json {
-                    ignoreUnknownKeys = true
-                    isLenient = true
-                    explicitNulls = false
-                }
-            )
+            json(Json {
+                ignoreUnknownKeys = true
+                isLenient = true
+                explicitNulls = false
+            })
         }
     }
 }
