@@ -23,8 +23,8 @@ fun main() {
     ).start(wait = true)
 }
 
-fun Application.module() {
-    FirebaseInit.init()
+fun Application.module(initFirebase: Boolean = true) {
+    if (initFirebase) FirebaseInit.init()
     val service = AlertService()
 
     install(ContentNegotiation) {
