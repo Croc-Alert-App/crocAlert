@@ -1,6 +1,7 @@
 package crocalert.app.shared.data.remote
 
 import crocalert.app.shared.data.dto.AlertDto
+import crocalert.app.shared.data.dto.IdResponse
 import crocalert.app.shared.network.ApiResult
 import crocalert.app.shared.network.ApiRoutes
 import crocalert.app.shared.network.safeCall
@@ -24,12 +25,12 @@ class AlertRemoteDataSourceImpl(
     override suspend fun getAlert(id: String): ApiResult<AlertDto> =
         safeCall { client.get("${ApiRoutes.ALERTS}/$id").body() }
 
-    override suspend fun createAlert(dto: AlertDto): ApiResult<String> =
+    override suspend fun createAlert(dto: AlertDto): ApiResult<IdResponse> =
         safeCall {
             client.post(ApiRoutes.ALERTS) {
                 contentType(ContentType.Application.Json)
                 setBody(dto)
-            }.body() // <-- espera String
+            }.body<IdResponse>()
         }
 
     override suspend fun updateAlert(id: String, dto: AlertDto): ApiResult<Unit> =
@@ -37,9 +38,9 @@ class AlertRemoteDataSourceImpl(
             client.put("${ApiRoutes.ALERTS}/$id") {
                 contentType(ContentType.Application.Json)
                 setBody(dto)
-            }
+            }.body<Unit>()
         }
 
     override suspend fun deleteAlert(id: String): ApiResult<Unit> =
-        safeCall { client.delete("${ApiRoutes.ALERTS}/$id") }
+        safeCall { client.delete("${ApiRoutes.ALERTS}/$id").body<Unit>() }
 }

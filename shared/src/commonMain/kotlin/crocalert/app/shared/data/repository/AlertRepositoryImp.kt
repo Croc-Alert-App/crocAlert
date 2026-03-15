@@ -32,7 +32,7 @@ class AlertRepositoryImpl(
         return when (val res = remote.createAlert(dto)) {
             is ApiResult.Success -> {
                 refresh()
-                res.data
+                res.data.id
             }
             is ApiResult.Error -> error(res.message)
         }
