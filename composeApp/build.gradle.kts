@@ -29,18 +29,22 @@ kotlin {
         }
     }
 
-    jvm()
+    jvm {
+        mainRun {
+            mainClass = "crocalert.app.MainKt"
+        }
+    }
 
     sourceSets {
         androidMain.dependencies {
             implementation(libs.androidxActivityCompose)
-            implementation(libs.androidxLifecycleViewmodelCompose)
-            implementation(libs.androidxLifecycleRuntimeCompose)
             implementation(libs.composeUiToolingPreview)
             implementation(libs.koinAndroidxCompose)
         }
 
         commonMain.dependencies {
+            implementation(libs.androidxLifecycleViewmodelCompose)
+            implementation(libs.androidxLifecycleRuntimeCompose)
             implementation(project(":shared"))
 
             implementation(libs.composeRuntime)
@@ -63,6 +67,7 @@ kotlin {
 
         jvmMain.dependencies {
             implementation(compose.desktop.currentOs)
+            implementation(libs.kotlinxCoroutinesSwing)
         }
     }
 }
