@@ -1,7 +1,3 @@
-plugins {
-    id("org.gradle.toolchains.foojay-resolver-convention") version "0.10.0"
-}
-
 pluginManagement {
     repositories {
         google()
@@ -19,6 +15,10 @@ pluginManagement {
         id("com.android.application") version "8.3.2"
         id("com.android.library") version "8.3.2"
     }
+}
+
+plugins {
+    id("org.gradle.toolchains.foojay-resolver-convention") version "0.10.0"
 }
 
 dependencyResolutionManagement {
