@@ -2,7 +2,9 @@ package crocalert.app
 
 import crocalert.server.FirebaseInit
 import crocalert.server.routes.alertRoutes
+import crocalert.server.routes.captureRoutes
 import crocalert.server.service.AlertService
+import crocalert.server.service.CaptureService
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.*
 import io.ktor.server.engine.*
@@ -25,7 +27,9 @@ fun main() {
 
 fun Application.module() {
     FirebaseInit.init()
-    val service = AlertService()
+
+    val alertService = AlertService()
+    val captureService = CaptureService()
 
     install(ContentNegotiation) {
         json(
@@ -41,6 +45,7 @@ fun Application.module() {
             call.respondText("Server running")
         }
 
-        alertRoutes(service)
+        alertRoutes(alertService)
+        captureRoutes(captureService)
     }
 }

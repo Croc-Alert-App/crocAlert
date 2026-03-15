@@ -2,6 +2,7 @@ package crocalert.server.service
 
 import crocalert.server.FirebaseInit
 import crocalert.app.shared.data.dto.AlertDto
+import com.google.cloud.firestore.DocumentSnapshot
 import java.util.UUID
 
 class AlertService {
@@ -9,38 +10,29 @@ class AlertService {
     private val db = FirebaseInit.firestore()
     private val col = db.collection("alerts")
 
+    private fun DocumentSnapshot.toAlertDto(): AlertDto {
+        return AlertDto(
+            id = id,
+            captureId = getString("captureId") ?: "",
+            createdAt = getLong("createdAt") ?: 0L,
+            status = getString("status") ?: "OPEN",
+            priority = getString("priority") ?: "MEDIUM",
+            assignedToUserId = getString("assignedToUserId"),
+            closedAt = getLong("closedAt"),
+            notes = getString("notes"),
+            title = getString("title") ?: ""
+        )
+    }
+
     suspend fun getAll(): List<AlertDto> {
         val snap = col.get().get()
-        return snap.documents.map { doc ->
-            AlertDto(
-                id = doc.id,
-                captureId = doc.getString("captureId") ?: "",
-                createdAt = doc.getLong("createdAt") ?: 0L,
-                status = doc.getString("status") ?: "OPEN",
-                priority = doc.getString("priority") ?: "MEDIUM",
-                assignedToUserId = doc.getString("assignedToUserId"),
-                closedAt = doc.getLong("closedAt"),
-                notes = doc.getString("notes"),
-                title = doc.getString("title") ?: ""
-            )
-        }
+        return snap.documents.map { it.toAlertDto() }
     }
 
     suspend fun getById(id: String): AlertDto? {
         val doc = col.document(id).get().get()
         if (!doc.exists()) return null
-
-        return AlertDto(
-            id = doc.id,
-            captureId = doc.getString("captureId") ?: "",
-            createdAt = doc.getLong("createdAt") ?: 0L,
-            status = doc.getString("status") ?: "OPEN",
-            priority = doc.getString("priority") ?: "MEDIUM",
-            assignedToUserId = doc.getString("assignedToUserId"),
-            closedAt = doc.getLong("closedAt"),
-            notes = doc.getString("notes"),
-            title = doc.getString("title") ?: ""
-        )
+        return doc.toAlertDto()
     }
 
     suspend fun create(dto: AlertDto): String {
@@ -79,6 +71,7 @@ class AlertService {
         val ref = col.document(id)
         val current = ref.get().get()
         if (!current.exists()) return false
+
         ref.delete().get()
         return true
     }
