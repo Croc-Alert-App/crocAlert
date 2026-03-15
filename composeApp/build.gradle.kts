@@ -48,6 +48,7 @@ kotlin {
             implementation(libs.composeMaterial3)
             implementation(libs.composeUi)
             implementation(libs.composeComponentsResources)
+            implementation(compose.materialIconsExtended)
             implementation(libs.kotlinxDatetime)
             implementation(libs.kotlinxCoroutinesCore)
 
