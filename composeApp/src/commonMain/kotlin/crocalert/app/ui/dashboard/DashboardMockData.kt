@@ -12,16 +12,17 @@ internal object DashboardMockData {
         activeAlerts = 3,
         criticalAlerts = 1,
         captureRate = "18/24h",
-        captureRatePct = 0.98f,
+        captureRatePct = 0.75f, // 18/24 = 75% — matches captureRate display
         integrityPct = 0.991f,
         networkTrend = listOf(
+            // 7-day lookback ending today — no future dates after isToday
+            NetworkTrendDay("V", 0.40f),
+            NetworkTrendDay("S", 0.45f),
+            NetworkTrendDay("D", 0.35f),
             NetworkTrendDay("L", 0.60f),
             NetworkTrendDay("M", 0.50f),
             NetworkTrendDay("X", 0.70f),
-            NetworkTrendDay("J", 1.00f, isToday = true),
-            NetworkTrendDay("V", 0.40f),
-            NetworkTrendDay("S", 0.45f),
-            NetworkTrendDay("D", 0.35f)
+            NetworkTrendDay("J", 1.00f, isToday = true)
         ),
         metadataMetrics = listOf(
             MetricItem("Precisión del GPS", 0.985f, "98.5%"),

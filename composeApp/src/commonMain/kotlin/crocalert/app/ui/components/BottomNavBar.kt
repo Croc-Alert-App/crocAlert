@@ -21,46 +21,38 @@ fun BottomNavBar(
     selected: DashboardTab,
     onSelect: (DashboardTab) -> Unit
 ) {
+    val itemColors = NavigationBarItemDefaults.colors(
+        selectedIconColor = CrocBlue,
+        selectedTextColor = CrocBlue
+    )
     NavigationBar(containerColor = MaterialTheme.colorScheme.surface) {
         NavigationBarItem(
             selected = selected == DashboardTab.Home,
             onClick = { onSelect(DashboardTab.Home) },
             icon = { Icon(Icons.Default.Home, contentDescription = "Inicio") },
             label = { Text("Inicio") },
-            colors = NavigationBarItemDefaults.colors(
-                selectedIconColor = CrocBlue,
-                selectedTextColor = CrocBlue
-            )
+            colors = itemColors
         )
         NavigationBarItem(
             selected = selected == DashboardTab.Cameras,
             onClick = { onSelect(DashboardTab.Cameras) },
             icon = { Icon(Icons.Default.Videocam, contentDescription = "Cámaras") },
             label = { Text("Cámaras") },
-            colors = NavigationBarItemDefaults.colors(
-                selectedIconColor = CrocBlue,
-                selectedTextColor = CrocBlue
-            )
+            colors = itemColors
         )
         NavigationBarItem(
             selected = selected == DashboardTab.Alerts,
             onClick = { onSelect(DashboardTab.Alerts) },
             icon = { Icon(Icons.Default.Notifications, contentDescription = "Alertas") },
             label = { Text("Alertas") },
-            colors = NavigationBarItemDefaults.colors(
-                selectedIconColor = CrocBlue,
-                selectedTextColor = CrocBlue
-            )
+            colors = itemColors
         )
         NavigationBarItem(
             selected = selected == DashboardTab.Profile,
             onClick = { onSelect(DashboardTab.Profile) },
             icon = { Icon(Icons.Default.Person, contentDescription = "Perfil") },
             label = { Text("Perfil") },
-            colors = NavigationBarItemDefaults.colors(
-                selectedIconColor = CrocBlue,
-                selectedTextColor = CrocBlue
-            )
+            colors = itemColors
         )
     }
 }
