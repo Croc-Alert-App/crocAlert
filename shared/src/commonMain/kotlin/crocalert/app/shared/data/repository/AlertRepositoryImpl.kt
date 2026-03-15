@@ -6,6 +6,7 @@ import crocalert.app.shared.data.mapper.toDto
 import crocalert.app.shared.data.mapper.toModel
 import crocalert.app.shared.data.remote.AlertRemoteDataSource
 import crocalert.app.shared.network.ApiResult
+import crocalert.app.shared.network.NetworkException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.emitAll
@@ -18,46 +19,48 @@ class AlertRepositoryImpl(
 
     private val alertsFlow = MutableStateFlow<List<Alert>>(emptyList())
 
-    // ✅ ahora carga del server apenas alguien observa
     override fun observeAlerts(): Flow<List<Alert>> = flow {
-        refresh()
+        ensureLoaded()
         emitAll(alertsFlow)
     }
 
-    override fun observeAlert(alertId: String): Flow<Alert?> =
-        alertsFlow.map { list -> list.firstOrNull { it.id == alertId } }
+    override fun observeAlert(alertId: String): Flow<Alert?> = flow {
+        ensureLoaded()
+        emitAll(alertsFlow.map { list -> list.firstOrNull { it.id == alertId } })
+    }
 
     override suspend fun createAlert(alert: Alert): String {
-        val dto = alert.toDto()
-        return when (val res = remote.createAlert(dto)) {
-            is ApiResult.Success -> {
-                refresh()
-                res.data.id
-            }
-            is ApiResult.Error -> error(res.message)
-        }
+        val id = remote.createAlert(alert.toDto()).getOrThrow().id
+        refresh()
+        return id
     }
 
     override suspend fun updateAlert(alert: Alert) {
-        val id = alert.id.ifBlank { error("updateAlert necesita id") }
-        val dto = alert.toDto()
-        when (val res = remote.updateAlert(id, dto)) {
-            is ApiResult.Success -> refresh()
-            is ApiResult.Error -> error(res.message)
-        }
+        val id = alert.id.ifBlank { throw IllegalArgumentException("updateAlert necesita id") }
+        remote.updateAlert(id, alert.toDto()).getOrThrow()
+        refresh()
     }
 
     override suspend fun deleteAlert(alertId: String) {
-        when (val res = remote.deleteAlert(alertId)) {
-            is ApiResult.Success -> refresh()
-            is ApiResult.Error -> error(res.message)
-        }
+        remote.deleteAlert(alertId).getOrThrow()
+        refresh()
     }
 
+    // Only fetches on first access; subsequent subscribers reuse cached data
+    private suspend fun ensureLoaded() {
+        if (alertsFlow.value.isEmpty()) refresh()
+    }
+
+    // Failed fetch retains stale data rather than killing observers
     private suspend fun refresh() {
         when (val res = remote.getAlerts()) {
             is ApiResult.Success -> alertsFlow.value = res.data.map { it.toModel() }
-            is ApiResult.Error -> error(res.message)
+            is ApiResult.Error -> { /* stale data retained */ }
         }
+    }
+
+    private fun <T> ApiResult<T>.getOrThrow(): T = when (this) {
+        is ApiResult.Success -> data
+        is ApiResult.Error -> throw NetworkException(message, code)
     }
 }
