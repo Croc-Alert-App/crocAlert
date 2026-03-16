@@ -32,7 +32,9 @@ class CamerasViewModel : ViewModel() {
         cameras
             .filter { camera ->
                 filter.matches(camera.status) &&
-                (query.isBlank() || camera.name.contains(query, ignoreCase = true))
+                (query.isBlank() ||
+                    camera.name.contains(query, ignoreCase = true) ||
+                    camera.id.contains(query, ignoreCase = true))
             }
             .sortedBy { it.status.severity }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), CamerasMockData.cameras)

@@ -55,7 +55,7 @@ fun CamerasScreen(viewModel: CamerasViewModel = viewModel { CamerasViewModel() }
     val hasActiveFilter = searchQuery.isNotBlank() || selectedFilter != CameraFilter.All
 
     Column(modifier = Modifier.fillMaxSize()) {
-        // — Static header (scrolls with content via LazyColumn below) ——————————
+        // — Static header ——————————————————————————————————————————————————————
         Column(modifier = Modifier.padding(horizontal = 16.dp)) {
             Text(
                 text = "CÁMARAS",
@@ -155,6 +155,7 @@ private fun CameraSortFilterRow(modifier: Modifier = Modifier) {
     ) {
         OutlinedButton(
             onClick = {},
+            enabled = false,
             shape = RoundedCornerShape(8.dp),
             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
             modifier = Modifier.weight(1f),
@@ -169,6 +170,7 @@ private fun CameraSortFilterRow(modifier: Modifier = Modifier) {
         }
         OutlinedButton(
             onClick = {},
+            enabled = false,
             shape = RoundedCornerShape(8.dp),
             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
             modifier = Modifier.weight(1f),

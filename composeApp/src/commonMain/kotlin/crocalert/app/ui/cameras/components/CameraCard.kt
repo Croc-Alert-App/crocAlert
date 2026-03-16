@@ -33,7 +33,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -51,7 +51,7 @@ fun CameraCard(
     camera: CameraUiItem,
     modifier: Modifier = Modifier,
 ) {
-    var expanded by remember { mutableStateOf(false) }
+    var expanded by rememberSaveable(camera.id) { mutableStateOf(false) }
 
     Card(
         modifier = modifier
@@ -140,7 +140,7 @@ fun CameraCard(
                                 color = MaterialTheme.colorScheme.onSurface,
                             )
                             Text(
-                                text = "${camera.captureCount} / ${camera.captureExpected} expected",
+                                text = "${camera.captureCount} / ${camera.captureExpected} esperadas",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -164,7 +164,7 @@ fun CameraCard(
                         Spacer(Modifier.height(6.dp))
 
                         Text(
-                            text = "${camera.missingCaptures} missing captures · ${camera.integrityFlags} integrity flags",
+                            text = "${camera.missingCaptures} capturas faltantes · ${camera.integrityFlags} alertas de integridad",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
