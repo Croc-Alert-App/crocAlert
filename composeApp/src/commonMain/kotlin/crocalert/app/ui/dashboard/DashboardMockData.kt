@@ -7,7 +7,7 @@ package crocalert.app.ui.dashboard
  */
 internal object DashboardMockData {
     fun load(): DashboardData = DashboardData(
-        activeCameras = 24,
+        activeCameras = 8,
         networkHealthPct = 0.92f,
         activeAlerts = 3,
         criticalAlerts = 1,
