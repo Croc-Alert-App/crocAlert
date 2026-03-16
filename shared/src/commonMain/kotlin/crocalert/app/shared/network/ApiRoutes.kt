@@ -1,9 +1,10 @@
 package crocalert.app.shared.network
 
 object ApiRoutes {
-    // Android emulator alias — pass the correct base URL to createAlertRepository() per platform.
-    // TODO: replace with BuildConfig.API_BASE_URL from a build flavor before release.
-    const val DEFAULT_BASE = "http://10.0.2.2:8080"
+    // Empty by design — each platform's AppModule must supply its own base URL.
+    // Using this default on iOS or Desktop will produce an immediate, visible failure
+    // rather than silently connecting to the Android emulator loopback alias.
+    const val DEFAULT_BASE = ""
 
     /** API key sent in X-API-Key header. Set before calling createAlertRepository(). */
     var API_KEY: String = ""

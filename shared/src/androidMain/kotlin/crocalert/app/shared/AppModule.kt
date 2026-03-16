@@ -5,6 +5,9 @@ import crocalert.app.shared.network.ApiRoutes
 
 object AppModule {
 
+    // Android emulator loopback alias — override with a real server URL before release.
+    private const val BASE_URL = "http://10.0.2.2:8080"
+
     fun provideAlertRepository(): AlertRepository =
-        createAlertRepository(baseUrl = ApiRoutes.DEFAULT_BASE)
+        createAlertRepository(baseUrl = BASE_URL)
 }

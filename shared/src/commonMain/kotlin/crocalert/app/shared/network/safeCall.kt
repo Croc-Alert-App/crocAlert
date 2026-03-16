@@ -3,7 +3,7 @@ package crocalert.app.shared.network
 import io.ktor.client.plugins.*
 import io.ktor.utils.io.errors.IOException
 
-suspend inline fun <T> safeCall(block: () -> T): ApiResult<T> {
+suspend fun <T> safeCall(block: () -> T): ApiResult<T> {
     return try {
         ApiResult.Success(block())
     } catch (e: IOException) {
