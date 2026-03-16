@@ -1,9 +1,11 @@
 package crocalert.app.ui.cameras.components
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.FastOutLinearInEasing
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -32,9 +34,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -49,14 +48,14 @@ import crocalert.app.ui.cameras.CameraUiItem
 @Composable
 fun CameraCard(
     camera: CameraUiItem,
+    expanded: Boolean,
+    onToggle: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    var expanded by rememberSaveable(camera.id) { mutableStateOf(false) }
-
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .clickable { expanded = !expanded },
+            .clickable { onToggle() },
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
         shape = RoundedCornerShape(8.dp),
@@ -120,8 +119,14 @@ fun CameraCard(
                 // Expanded detail section
                 AnimatedVisibility(
                     visible = expanded,
-                    enter = expandVertically() + fadeIn(),
-                    exit = shrinkVertically() + fadeOut(),
+                    enter = expandVertically(
+                        animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing)
+                    ) + fadeIn(
+                        animationSpec = tween(durationMillis = 200)
+                    ),
+                    exit = shrinkVertically(
+                        animationSpec = tween(durationMillis = 150, easing = FastOutLinearInEasing)
+                    ),
                 ) {
                     Column {
                         Spacer(Modifier.height(12.dp))

@@ -51,6 +51,7 @@ fun CamerasScreen(viewModel: CamerasViewModel = viewModel { CamerasViewModel() }
     val searchQuery by viewModel.searchQuery.collectAsState()
     val selectedFilter by viewModel.selectedFilter.collectAsState()
     val statusCounts by viewModel.statusCounts.collectAsState()
+    val expandedCameraId by viewModel.expandedCameraId.collectAsState()
 
     val hasActiveFilter = searchQuery.isNotBlank() || selectedFilter != CameraFilter.All
 
@@ -103,7 +104,11 @@ fun CamerasScreen(viewModel: CamerasViewModel = viewModel { CamerasViewModel() }
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 items(filteredCameras, key = { it.id }) { camera ->
-                    CameraCard(camera = camera)
+                    CameraCard(
+                        camera = camera,
+                        expanded = expandedCameraId == camera.id,
+                        onToggle = { viewModel.toggleExpand(camera.id) },
+                    )
                 }
                 item { Spacer(Modifier.height(8.dp)) }
             }
