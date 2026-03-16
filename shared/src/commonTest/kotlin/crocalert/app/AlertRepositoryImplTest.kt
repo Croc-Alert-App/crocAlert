@@ -1,0 +1,253 @@
+package crocalert.app
+
+import crocalert.app.model.Alert
+import crocalert.app.model.AlertPriority
+import crocalert.app.model.AlertStatus
+import crocalert.app.shared.data.dto.AlertDto
+import crocalert.app.shared.data.dto.IdResponse
+import crocalert.app.shared.data.remote.AlertRemoteDataSource
+import crocalert.app.shared.data.repository.AlertRepositoryImpl
+import crocalert.app.shared.network.ApiResult
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.test.runTest
+import kotlin.test.*
+
+class AlertRepositoryImplTest {
+
+    // ── Fixtures ──────────────────────────────────────────────────────────────
+
+    private val sampleDto = AlertDto(
+        id = "alert-1",
+        captureId = "cap-1",
+        createdAt = 1000L,
+        status = "OPEN",
+        priority = "HIGH",
+        title = "Test alert"
+    )
+
+    private val sampleAlert = Alert(
+        id = "alert-1",
+        captureId = "cap-1",
+        createdAt = 1000L,
+        status = AlertStatus.OPEN,
+        priority = AlertPriority.HIGH,
+        title = "Test alert"
+    )
+
+    private fun repo(fake: FakeAlertRemoteDataSource) = AlertRepositoryImpl(fake)
+
+    // ── observeAlerts ─────────────────────────────────────────────────────────
+
+    @Test
+    fun `observeAlerts emits empty list when remote returns empty`() = runTest {
+        val fake = FakeAlertRemoteDataSource()
+        val result = repo(fake).observeAlerts().first()
+        assertTrue(result.isEmpty())
+    }
+
+    @Test
+    fun `observeAlerts emits mapped models when remote returns DTOs`() = runTest {
+        val fake = FakeAlertRemoteDataSource(
+            getAlertsResult = ApiResult.Success(listOf(sampleDto))
+        )
+        val result = repo(fake).observeAlerts().first()
+        assertEquals(1, result.size)
+        assertEquals("alert-1", result[0].id)
+        assertEquals(AlertStatus.OPEN, result[0].status)
+        assertEquals(AlertPriority.HIGH, result[0].priority)
+    }
+
+    @Test
+    fun `observeAlerts only fetches from remote once when cache is already populated`() = runTest {
+        val fake = FakeAlertRemoteDataSource(
+            getAlertsResult = ApiResult.Success(listOf(sampleDto))
+        )
+        val r = repo(fake)
+        r.observeAlerts().first()  // populates cache
+        r.observeAlerts().first()  // cache is non-empty → no refetch
+        assertEquals(1, fake.getCallCount)
+    }
+
+    @Test
+    fun `observeAlerts retains stale cache when refresh fails after a mutation`() = runTest {
+        val fake = FakeAlertRemoteDataSource(
+            getAlertsResult = ApiResult.Success(listOf(sampleDto)),
+            createResult = ApiResult.Success(IdResponse("new-id"))
+        )
+        val r = repo(fake)
+        // Populate cache
+        val initial = r.observeAlerts().first()
+        assertEquals(1, initial.size)
+
+        // Make the next remote refresh fail (triggered by createAlert → refresh())
+        fake.getAlertsResult = ApiResult.Error("Server down")
+        r.createAlert(Alert(captureId = "cap-2", title = "New"))
+
+        // Cache retains the original data — not wiped by the failed refresh
+        val afterError = r.observeAlerts().first()
+        assertEquals(1, afterError.size)
+        assertEquals("alert-1", afterError[0].id)
+    }
+
+    // ── observeAlert(id) ──────────────────────────────────────────────────────
+
+    @Test
+    fun `observeAlert returns null for unknown id`() = runTest {
+        val fake = FakeAlertRemoteDataSource()
+        val result = repo(fake).observeAlert("no-such-id").first()
+        assertNull(result)
+    }
+
+    @Test
+    fun `observeAlert returns matching Alert for known id`() = runTest {
+        val fake = FakeAlertRemoteDataSource(
+            getAlertsResult = ApiResult.Success(listOf(sampleDto))
+        )
+        val result = repo(fake).observeAlert("alert-1").first()
+        assertNotNull(result)
+        assertEquals("alert-1", result.id)
+    }
+
+    @Test
+    fun `observeAlert emits null after the alert is deleted`() = runTest {
+        val fake = FakeAlertRemoteDataSource(
+            getAlertsResult = ApiResult.Success(listOf(sampleDto)),
+            deleteResult = ApiResult.Success(Unit)
+        )
+        val r = repo(fake)
+        // Confirm alert exists
+        assertNotNull(r.observeAlert("alert-1").first())
+
+        // Delete it and make the next remote call return empty list
+        fake.getAlertsResult = ApiResult.Success(emptyList())
+        r.deleteAlert("alert-1")
+
+        // Now it should be gone
+        assertNull(r.observeAlert("alert-1").first())
+    }
+
+    // ── createAlert ───────────────────────────────────────────────────────────
+
+    @Test
+    fun `createAlert returns id from remote on success`() = runTest {
+        val fake = FakeAlertRemoteDataSource(
+            getAlertsResult = ApiResult.Success(emptyList()),
+            createResult = ApiResult.Success(IdResponse("server-generated-id"))
+        )
+        val id = repo(fake).createAlert(Alert(captureId = "cap-2", title = "New"))
+        assertEquals("server-generated-id", id)
+    }
+
+    @Test
+    fun `createAlert refreshes cache after success`() = runTest {
+        val newDto = sampleDto.copy(id = "alert-2", title = "Created")
+        val fake = FakeAlertRemoteDataSource(
+            getAlertsResult = ApiResult.Success(emptyList()),
+            createResult = ApiResult.Success(IdResponse("alert-2"))
+        )
+        val r = repo(fake)
+        r.observeAlerts().first()              // initial load → empty
+        fake.getAlertsResult = ApiResult.Success(listOf(newDto))
+        r.createAlert(Alert(captureId = "cap-2", title = "Created"))
+        val after = r.observeAlerts().first()  // cache was refreshed
+        assertEquals(1, after.size)
+        assertEquals("alert-2", after[0].id)
+    }
+
+    @Test
+    fun `createAlert throws when remote returns Error`() = runTest {
+        val fake = FakeAlertRemoteDataSource(
+            getAlertsResult = ApiResult.Success(emptyList()),
+            createResult = ApiResult.Error("Unauthorized", 401)
+        )
+        assertFailsWith<IllegalStateException> {
+            repo(fake).createAlert(Alert(captureId = "cap-2", title = "New"))
+        }
+    }
+
+    // ── updateAlert ───────────────────────────────────────────────────────────
+
+    @Test
+    fun `updateAlert throws IllegalArgumentException when alert id is blank`() = runTest {
+        val fake = FakeAlertRemoteDataSource()
+        assertFailsWith<IllegalArgumentException> {
+            repo(fake).updateAlert(Alert(id = "", title = "no id"))
+        }
+    }
+
+    @Test
+    fun `updateAlert refreshes cache after success`() = runTest {
+        val updatedDto = sampleDto.copy(title = "Updated title")
+        val fake = FakeAlertRemoteDataSource(
+            getAlertsResult = ApiResult.Success(listOf(sampleDto)),
+            updateResult = ApiResult.Success(Unit)
+        )
+        val r = repo(fake)
+        r.observeAlerts().first()
+        fake.getAlertsResult = ApiResult.Success(listOf(updatedDto))
+        r.updateAlert(sampleAlert.copy(title = "Updated title"))
+        val after = r.observeAlerts().first()
+        assertEquals("Updated title", after[0].title)
+    }
+
+    @Test
+    fun `updateAlert throws when remote returns Error`() = runTest {
+        val fake = FakeAlertRemoteDataSource(
+            getAlertsResult = ApiResult.Success(emptyList()),
+            updateResult = ApiResult.Error("Not found", 404)
+        )
+        assertFailsWith<IllegalStateException> {
+            repo(fake).updateAlert(sampleAlert)
+        }
+    }
+
+    // ── deleteAlert ───────────────────────────────────────────────────────────
+
+    @Test
+    fun `deleteAlert refreshes cache after success`() = runTest {
+        val fake = FakeAlertRemoteDataSource(
+            getAlertsResult = ApiResult.Success(listOf(sampleDto)),
+            deleteResult = ApiResult.Success(Unit)
+        )
+        val r = repo(fake)
+        r.observeAlerts().first()                      // populates cache
+        fake.getAlertsResult = ApiResult.Success(emptyList())
+        r.deleteAlert("alert-1")
+        assertTrue(r.observeAlerts().first().isEmpty())
+    }
+
+    @Test
+    fun `deleteAlert throws when remote returns Error`() = runTest {
+        val fake = FakeAlertRemoteDataSource(
+            getAlertsResult = ApiResult.Success(emptyList()),
+            deleteResult = ApiResult.Error("Not found", 404)
+        )
+        assertFailsWith<IllegalStateException> {
+            repo(fake).deleteAlert("alert-1")
+        }
+    }
+}
+
+// ── Fake remote data source ───────────────────────────────────────────────────
+
+private class FakeAlertRemoteDataSource(
+    var getAlertsResult: ApiResult<List<AlertDto>> = ApiResult.Success(emptyList()),
+    var createResult: ApiResult<IdResponse> = ApiResult.Success(IdResponse("new-id")),
+    var updateResult: ApiResult<Unit> = ApiResult.Success(Unit),
+    var deleteResult: ApiResult<Unit> = ApiResult.Success(Unit),
+) : AlertRemoteDataSource {
+
+    var getCallCount = 0
+
+    override suspend fun getAlerts(): ApiResult<List<AlertDto>> =
+        getAlertsResult.also { getCallCount++ }
+
+    override suspend fun getAlert(id: String): ApiResult<AlertDto> =
+        ApiResult.Success(AlertDto(id = id))
+
+    override suspend fun createAlert(dto: AlertDto): ApiResult<IdResponse> = createResult
+
+    override suspend fun updateAlert(id: String, dto: AlertDto): ApiResult<Unit> = updateResult
+
+    override suspend fun deleteAlert(id: String): ApiResult<Unit> = deleteResult
+}
