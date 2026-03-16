@@ -6,7 +6,6 @@ import crocalert.app.shared.data.mapper.toDto
 import crocalert.app.shared.data.mapper.toModel
 import crocalert.app.shared.data.remote.AlertRemoteDataSource
 import crocalert.app.shared.network.ApiResult
-import crocalert.app.shared.network.NetworkException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.emitAll
@@ -61,6 +60,6 @@ class AlertRepositoryImpl(
 
     private fun <T> ApiResult<T>.getOrThrow(): T = when (this) {
         is ApiResult.Success -> data
-        is ApiResult.Error -> throw NetworkException(message, code)
+        is ApiResult.Error -> error(message)
     }
 }
