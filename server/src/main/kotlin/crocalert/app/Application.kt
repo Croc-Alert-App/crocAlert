@@ -49,6 +49,8 @@ fun Application.configureAuth() {
             call.respond(HttpStatusCode.Unauthorized, "Invalid or missing X-API-Key header")
             finish()
         }
+
+        alertRoutes(service)
     }
 }
 
