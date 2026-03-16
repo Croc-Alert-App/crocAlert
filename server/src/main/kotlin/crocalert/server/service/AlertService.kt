@@ -37,25 +37,34 @@ class AlertService {
 
     suspend fun update(id: String, dto: AlertDto): Boolean {
         val ref = col.document(id)
-        val exists = withContext(Dispatchers.IO) { ref.get().get() }.exists()
-        if (!exists) return false
-        val normalized = dto.copy(
-            id = id,
-            captureId = dto.captureId.ifBlank { "" },
-            createdAt = if (dto.createdAt == 0L) System.currentTimeMillis() else dto.createdAt,
-            status = dto.status.ifBlank { "OPEN" },
-            priority = dto.priority.ifBlank { "MEDIUM" }
-        )
-        withContext(Dispatchers.IO) { ref.set(normalized).get() }
-        return true
+        return withContext(Dispatchers.IO) {
+            FirebaseInit.firestore().runTransaction { transaction ->
+                val snapshot = transaction.get(ref).get()
+                if (!snapshot.exists()) return@runTransaction false
+                val normalized = dto.copy(
+                    id = id,
+                    captureId = dto.captureId.ifBlank { "" },
+                    createdAt = if (dto.createdAt == 0L) System.currentTimeMillis() else dto.createdAt,
+                    // Preserve the document's existing value instead of defaulting to "OPEN"/"MEDIUM",
+                    // preventing a blank-field PUT from accidentally reopening a closed alert.
+                    status = dto.status.ifBlank { snapshot.getString("status") ?: "OPEN" },
+                    priority = dto.priority.ifBlank { snapshot.getString("priority") ?: "MEDIUM" }
+                )
+                transaction.set(ref, normalized)
+                true
+            }.get()
+        }
     }
 
     suspend fun delete(id: String): Boolean {
         val ref = col.document(id)
-        val exists = withContext(Dispatchers.IO) { ref.get().get() }.exists()
-        if (!exists) return false
-        withContext(Dispatchers.IO) { ref.delete().get() }
-        return true
+        return withContext(Dispatchers.IO) {
+            FirebaseInit.firestore().runTransaction { transaction ->
+                if (!transaction.get(ref).get().exists()) return@runTransaction false
+                transaction.delete(ref)
+                true
+            }.get()
+        }
     }
 
     // MED-1: single mapping function — no duplication between getAll and getById
