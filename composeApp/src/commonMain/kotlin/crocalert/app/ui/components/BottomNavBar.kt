@@ -13,8 +13,7 @@ import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import crocalert.app.theme.CrocBlue
-
-enum class DashboardTab { Home, Cameras, Alerts, Profile }
+import crocalert.app.ui.dashboard.DashboardTab
 
 @Composable
 fun BottomNavBar(

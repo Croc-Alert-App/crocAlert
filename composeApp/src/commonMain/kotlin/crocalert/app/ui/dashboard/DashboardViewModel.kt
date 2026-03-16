@@ -2,14 +2,17 @@ package crocalert.app.ui.dashboard
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import crocalert.app.ui.components.DashboardTab
-import crocalert.app.ui.components.SyncStatus
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.datetime.Clock
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 
-class DashboardViewModel : ViewModel() {
+class DashboardViewModel(
+    private val loadDashboard: suspend () -> DashboardData = { DashboardMockData.load() }
+) : ViewModel() {
 
     private val _uiState = MutableStateFlow<DashboardUiState>(DashboardUiState.Loading)
     val uiState: StateFlow<DashboardUiState> = _uiState.asStateFlow()
@@ -41,9 +44,10 @@ class DashboardViewModel : ViewModel() {
     private fun loadData() {
         viewModelScope.launch {
             _uiState.value = try {
-                val data = DashboardUiState.Success(DashboardMockData.load())
+                val data = DashboardUiState.Success(loadDashboard())
                 _syncStatus.value = SyncStatus.Synced
-                _lastSynced.value = "ahora mismo"
+                val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
+                _lastSynced.value = "${now.hour.toString().padStart(2, '0')}:${now.minute.toString().padStart(2, '0')}"
                 data
             } catch (e: Exception) {
                 _syncStatus.value = SyncStatus.Error

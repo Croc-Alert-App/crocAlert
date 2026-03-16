@@ -23,3 +23,8 @@ data class ActivityEvent(
     val severity: String,
     val isNew: Boolean = false
 )
+
+// Navigation and sync state — defined here so ViewModels never import from UI component files.
+enum class DashboardTab { Home, Cameras, Alerts, Profile }
+
+enum class SyncStatus { Syncing, Synced, Error }

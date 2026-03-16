@@ -13,8 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import crocalert.app.theme.CrocBlue
 import crocalert.app.theme.CrocWhite
-
-enum class SyncStatus { Syncing, Synced, Error }
+import crocalert.app.ui.dashboard.SyncStatus
 
 @Composable
 fun SyncBanner(
@@ -28,9 +27,11 @@ fun SyncBanner(
         SyncStatus.Error -> MaterialTheme.colorScheme.error
     }
     val message = when (status) {
-        SyncStatus.Syncing -> "Sincronizando... Última actualización $lastUpdated"
-        SyncStatus.Synced -> "Última actualización $lastUpdated"
-        SyncStatus.Error -> "Error de sincronización · Última actualización $lastUpdated"
+        SyncStatus.Syncing -> if (lastUpdated.isBlank()) "Sincronizando..."
+                              else "Sincronizando... Última actualización $lastUpdated"
+        SyncStatus.Synced  -> "Última actualización $lastUpdated"
+        SyncStatus.Error   -> if (lastUpdated.isBlank()) "Error de sincronización"
+                              else "Error de sincronización · Última actualización $lastUpdated"
     }
 
     Row(

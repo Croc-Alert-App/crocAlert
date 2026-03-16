@@ -10,9 +10,11 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 
-class CamerasViewModel : ViewModel() {
+class CamerasViewModel(
+    initialCameras: List<CameraUiItem> = CamerasMockData.cameras
+) : ViewModel() {
 
-    private val _cameras = MutableStateFlow(CamerasMockData.cameras)
+    private val _cameras = MutableStateFlow(initialCameras)
 
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()

@@ -10,13 +10,13 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -32,11 +32,9 @@ import crocalert.app.theme.CrocAmber
 import crocalert.app.theme.CrocBlue
 import crocalert.app.ui.cameras.CamerasScreen
 import crocalert.app.ui.components.BottomNavBar
-import crocalert.app.ui.components.DashboardTab
 import crocalert.app.ui.components.EmptyStateView
 import crocalert.app.ui.components.StatCard
 import crocalert.app.ui.components.SyncBanner
-import crocalert.app.ui.components.SyncStatus
 
 @Composable
 fun DashboardScreen(viewModel: DashboardViewModel = viewModel { DashboardViewModel() }) {
@@ -56,7 +54,7 @@ fun DashboardScreen(viewModel: DashboardViewModel = viewModel { DashboardViewMod
             )
             when (val state = uiState) {
                 is DashboardUiState.Loading -> LoadingContent()
-                is DashboardUiState.Error -> ErrorContent(state.message)
+                is DashboardUiState.Error -> ErrorContent(state.message, onRetry = viewModel::retry)
                 is DashboardUiState.Success -> when (selectedTab) {
                     DashboardTab.Home -> DashboardContent(state.data)
                     DashboardTab.Cameras -> CamerasScreen()
@@ -86,13 +84,21 @@ private fun LoadingContent() {
 }
 
 @Composable
-private fun ErrorContent(message: String) {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+private fun ErrorContent(message: String, onRetry: () -> Unit) {
+    Column(
+        modifier = Modifier.fillMaxSize().padding(horizontal = 32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
         Text(
             text = message,
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.error
         )
+        Spacer(modifier = Modifier.height(16.dp))
+        Button(onClick = onRetry) {
+            Text("Reintentar")
+        }
     }
 }
 
@@ -176,24 +182,11 @@ private fun NetworkTrendSection(data: DashboardData) {
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "Tendencia de la red (7d)",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = CrocBlue
-                )
-                TextButton(onClick = {}, enabled = false) {
-                    Text(
-                        text = "Vista de experto",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
+            Text(
+                text = "Tendencia de la red (7d)",
+                style = MaterialTheme.typography.titleMedium,
+                color = CrocBlue
+            )
             Spacer(modifier = Modifier.height(8.dp))
             NetworkBarChart(
                 data = data.networkTrend,
