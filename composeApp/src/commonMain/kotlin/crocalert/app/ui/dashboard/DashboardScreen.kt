@@ -25,10 +25,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material.icons.outlined.Person
 import crocalert.app.theme.CrocAmber
 import crocalert.app.theme.CrocBlue
+import crocalert.app.ui.cameras.CamerasScreen
 import crocalert.app.ui.components.BottomNavBar
 import crocalert.app.ui.components.DashboardTab
+import crocalert.app.ui.components.EmptyStateView
 import crocalert.app.ui.components.StatCard
 import crocalert.app.ui.components.SyncBanner
 import crocalert.app.ui.components.SyncStatus
@@ -54,9 +59,17 @@ fun DashboardScreen(viewModel: DashboardViewModel = viewModel { DashboardViewMod
                 is DashboardUiState.Error -> ErrorContent(state.message)
                 is DashboardUiState.Success -> when (selectedTab) {
                     DashboardTab.Home -> DashboardContent(state.data)
-                    DashboardTab.Cameras -> PlaceholderScreen("Cámaras")
-                    DashboardTab.Alerts -> PlaceholderScreen("Alertas")
-                    DashboardTab.Profile -> PlaceholderScreen("Perfil")
+                    DashboardTab.Cameras -> CamerasScreen()
+                    DashboardTab.Alerts -> EmptyStateView(
+                        icon = Icons.Outlined.Notifications,
+                        title = "Sin alertas activas",
+                        subtitle = "No hay alertas activas en este momento."
+                    )
+                    DashboardTab.Profile -> EmptyStateView(
+                        icon = Icons.Outlined.Person,
+                        title = "Perfil no disponible",
+                        subtitle = "La información de perfil no está disponible aún."
+                    )
                 }
             }
         }
@@ -92,17 +105,6 @@ private fun DashboardContent(data: DashboardData) {
         item { MetadataQualitySection(data) }
         item { RecentActivitySection(data) }
         item { Spacer(modifier = Modifier.height(16.dp)) }
-    }
-}
-
-@Composable
-private fun PlaceholderScreen(title: String) {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
     }
 }
 
