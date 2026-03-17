@@ -31,22 +31,16 @@ fun main() {
 
 fun Application.module() {
     FirebaseInit.init()
-
-    val alertService = AlertService()
-    val captureService = CaptureService()
-    val cameraService = CameraService()
-
     configureSerialization()
     configureAuth()
-    configureRouting(AlertService())
+    configureRouting(
+        alertService  = AlertService(),
+        captureService = CaptureService(),
+        cameraService  = CameraService()
+    )
 }
 
-/**
- * Simple API key guard. Set CROC_API_KEY env var to enable.
- * When the env var is blank the server runs in dev mode with no auth,
- * so staging/prod deployments must always set the variable.
- * The health-check endpoint (GET /) is excluded from auth.
- */
+// API key guard via CROC_API_KEY env var. Blank = dev mode (no auth). GET / is always open.
 fun Application.configureAuth() {
     val expectedKey = System.getenv("CROC_API_KEY").orEmpty()
     if (expectedKey.isBlank()) return   // dev mode — skip
@@ -58,8 +52,6 @@ fun Application.configureAuth() {
             call.respond(HttpStatusCode.Unauthorized, "Invalid or missing X-API-Key header")
             finish()
         }
-
-        alertRoutes(service)
     }
 }
 
@@ -72,15 +64,17 @@ fun Application.configureSerialization() {
     }
 }
 
-fun Application.configureRouting(service: AlertService = AlertService()) {
+fun Application.configureRouting(
+    alertService: AlertService = AlertService(),
+    captureService: CaptureService = CaptureService(),
+    cameraService: CameraService = CameraService()
+) {
     routing {
         get("/") {
             call.respondText("Server running")
         }
-
         alertRoutes(alertService)
         captureRoutes(captureService)
         cameraRoutes(cameraService)
-        alertRoutes(service)
     }
 }
