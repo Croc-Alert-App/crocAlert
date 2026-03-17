@@ -31,10 +31,8 @@ android {
 }
 
 dependencies {
-    // composeApp is now an androidLibrary — valid as a dependency
     implementation(project(":composeApp"))
-    // shared is implementation-scoped in :composeApp so must be added here for ApiRoutes access
+    // :shared is not transitive from :composeApp — required for ApiRoutes
     implementation(project(":shared"))
-    // activity-compose provides setContent / enableEdgeToEdge for this app module
     implementation(libs.androidxActivityCompose)
 }
