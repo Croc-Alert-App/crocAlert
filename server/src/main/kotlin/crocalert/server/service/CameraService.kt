@@ -18,7 +18,7 @@ class CameraService {
             id = id,
             name = getString("name") ?: "",
             isActive = getBoolean("isActive") ?: true,
-            siteId = getString("siteId"),
+            siteId = getDocumentReference("siteId")?.path ?: getString("siteId"),
             createdAt = created,
             installedAt = installed
         )

@@ -1,7 +1,7 @@
 package crocalert.app.shared
 
 import crocalert.app.domain.repository.AlertRepository
-import crocalert.app.shared.network.ApiRoutes
+import crocalert.app.domain.repository.CameraRepository
 
 object AppModule {
 
@@ -10,4 +10,7 @@ object AppModule {
 
     fun provideAlertRepository(): AlertRepository =
         createAlertRepository(baseUrl = BASE_URL)
+
+    fun provideCameraRepository(): CameraRepository =
+        createCameraRepository(baseUrl = BASE_URL)
 }
