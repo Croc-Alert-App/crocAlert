@@ -6,7 +6,7 @@ import crocalert.app.shared.data.repository.AlertRepositoryImpl
 import crocalert.app.shared.network.ApiRoutes
 import crocalert.app.shared.network.HttpClientFactory
 
-// Singleton HTTP client — shared across all repository instances to reuse the connection pool.
+// Singleton — reuses the connection pool across all repository instances.
 private val sharedHttpClient by lazy { HttpClientFactory.create() }
 
 /**

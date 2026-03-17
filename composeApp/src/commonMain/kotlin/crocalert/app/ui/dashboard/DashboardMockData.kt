@@ -12,7 +12,7 @@ internal object DashboardMockData {
         activeAlerts = 3,
         criticalAlerts = 1,
         captureRate = "18/24h",
-        captureRatePct = 0.75f, // 18/24 = 75% — matches captureRate display
+        captureRatePct = 0.75f,
         integrityPct = 0.991f,
         networkTrend = listOf(
             // 7-day lookback ending today — no future dates after isToday

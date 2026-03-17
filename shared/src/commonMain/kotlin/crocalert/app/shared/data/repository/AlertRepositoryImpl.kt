@@ -46,12 +46,12 @@ class AlertRepositoryImpl(
         refresh()
     }
 
-    // Only fetches on first access; subsequent subscribers reuse cached data
+    // Fetches once on first access; subsequent subscribers reuse the cache.
     private suspend fun ensureLoaded() {
         if (alertsFlow.value.isEmpty()) refresh()
     }
 
-    // Failed fetch retains stale data rather than killing observers
+    // Silently retains stale data on error to avoid killing observers.
     private suspend fun refresh() {
         when (val res = remote.getAlerts()) {
             is ApiResult.Success -> alertsFlow.value = res.data.map { it.toModel() }

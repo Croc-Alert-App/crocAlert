@@ -31,7 +31,6 @@ class DashboardViewModel : ViewModel() {
         _selectedTab.value = tab
     }
 
-    // H1 fix: retry properly re-triggers loadData() instead of just changing a visual flag
     fun retry() {
         _uiState.value = DashboardUiState.Loading
         _syncStatus.value = SyncStatus.Syncing

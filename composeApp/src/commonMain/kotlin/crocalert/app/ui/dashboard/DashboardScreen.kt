@@ -63,8 +63,6 @@ fun DashboardScreen(viewModel: DashboardViewModel = viewModel { DashboardViewMod
     }
 }
 
-// — State renderers ———————————————————————————————————————
-
 @Composable
 private fun LoadingContent() {
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -105,8 +103,6 @@ private fun PlaceholderScreen(title: String) {
         )
     }
 }
-
-// — Sections ——————————————————————————————————————————————
 
 @Composable
 private fun HeaderSection(data: DashboardData) {

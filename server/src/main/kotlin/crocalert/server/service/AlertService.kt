@@ -58,7 +58,6 @@ class AlertService {
         return true
     }
 
-    // MED-1: single mapping function — no duplication between getAll and getById
     private fun DocumentSnapshot.toDto() = AlertDto(
         id = id,
         captureId = getString("captureId") ?: "",
