@@ -40,7 +40,8 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun App() {
-    AlertsScreen()
+    //AlertsScreen()
+    AlertHistoryScreen()
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
