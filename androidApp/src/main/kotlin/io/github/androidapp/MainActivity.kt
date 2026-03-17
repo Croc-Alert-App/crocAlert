@@ -5,15 +5,16 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import crocalert.app.App
+import crocalert.app.shared.network.ApiRoutes
 import crocalert.app.theme.CrocAlertTheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        // ApiRoutes.BASE already defaults to the emulator alias (10.0.2.2:8080).
-        // For a real device or CI, override here with the server's LAN/cloud URL,
-        // ideally via BuildConfig.API_BASE_URL wired from local.properties.
+        // Android emulator routes localhost through 10.0.2.2
+        // Change to your machine's LAN IP when testing on a real device
+        ApiRoutes.BASE = "http://10.0.2.2:8080"
         setContent {
             CrocAlertTheme {
                 App()

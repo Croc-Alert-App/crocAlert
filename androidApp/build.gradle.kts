@@ -36,5 +36,5 @@ dependencies {
     // shared is implementation-scoped in :composeApp so must be added here for ApiRoutes access
     implementation(project(":shared"))
     // activity-compose provides setContent / enableEdgeToEdge for this app module
-    implementation(libs.androidxActivityCompose)
+    implementation("androidx.activity:activity-compose:1.9.0")
 }
