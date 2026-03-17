@@ -16,16 +16,17 @@ class AlertRepositoryImpl(
     private val remote: AlertRemoteDataSource
 ) : AlertRepository {
 
-    private val alertsFlow = MutableStateFlow<List<Alert>>(emptyList())
+    // null = not yet loaded; empty list = server returned zero alerts (valid state)
+    private val alertsFlow = MutableStateFlow<List<Alert>?>(null)
 
     override fun observeAlerts(): Flow<List<Alert>> = flow {
         ensureLoaded()
-        emitAll(alertsFlow)
+        emitAll(alertsFlow.map { it ?: emptyList() })
     }
 
     override fun observeAlert(alertId: String): Flow<Alert?> = flow {
         ensureLoaded()
-        emitAll(alertsFlow.map { list -> list.firstOrNull { it.id == alertId } })
+        emitAll(alertsFlow.map { list -> list?.firstOrNull { it.id == alertId } })
     }
 
     override suspend fun createAlert(alert: Alert): String {
@@ -45,12 +46,11 @@ class AlertRepositoryImpl(
         refresh()
     }
 
-    // Only fetches on first access; subsequent subscribers reuse cached data
     private suspend fun ensureLoaded() {
-        if (alertsFlow.value.isEmpty()) refresh()
+        if (alertsFlow.value == null) refresh()
     }
 
-    // Failed fetch retains stale data rather than killing observers
+    // Silently retains stale data on error to avoid killing observers.
     private suspend fun refresh() {
         when (val res = remote.getAlerts()) {
             is ApiResult.Success -> alertsFlow.value = res.data.map { it.toModel() }

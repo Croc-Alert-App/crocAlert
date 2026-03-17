@@ -48,7 +48,7 @@ class CamerasViewModel(
                     camera.id.contains(query, ignoreCase = true))
             }
             .sortedBy { it.status.severity }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), CamerasMockData.cameras)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), initialCameras)
 
     fun onSearchChange(query: String) { _searchQuery.value = query }
 
