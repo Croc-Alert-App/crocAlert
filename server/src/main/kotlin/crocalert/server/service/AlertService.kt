@@ -6,8 +6,8 @@ import java.util.UUID
 
 class AlertService {
 
-    private val db = FirebaseInit.firestore()
-    private val col = db.collection("alerts")
+    private val db by lazy { FirebaseInit.firestore() }
+    private val col by lazy { db.collection("alerts") }
 
     suspend fun getAll(): List<AlertDto> {
         val snap = col.get().get()
