@@ -1,17 +1,17 @@
 plugins {
-    id("com.android.application")
-    id("org.jetbrains.kotlin.android")
-    id("org.jetbrains.kotlin.plugin.compose")
+    alias(libs.plugins.androidApplication)
+    alias(libs.plugins.kotlinAndroid)
+    alias(libs.plugins.composeCompiler)
 }
 
 android {
     namespace = "io.github.androidapp"
-    compileSdk = 34
+    compileSdk = libs.versions.androidCompileSdk.get().toInt()
 
     defaultConfig {
         applicationId = "io.github.androidapp"
-        minSdk = 24
-        targetSdk = 34
+        minSdk = libs.versions.androidMinSdk.get().toInt()
+        targetSdk = libs.versions.androidTargetSdk.get().toInt()
         versionCode = 1
         versionName = "1.0"
     }
@@ -36,5 +36,5 @@ dependencies {
     // shared is implementation-scoped in :composeApp so must be added here for ApiRoutes access
     implementation(project(":shared"))
     // activity-compose provides setContent / enableEdgeToEdge for this app module
-    implementation("androidx.activity:activity-compose:1.9.0")
+    implementation(libs.androidxActivityCompose)
 }

@@ -37,7 +37,7 @@ kotlin {
             implementation(libs.androidxLifecycleViewmodelCompose)
             implementation(libs.androidxLifecycleRuntimeCompose)
             implementation(libs.composeUiToolingPreview)
-            implementation("io.insert-koin:koin-androidx-compose:3.5.6")
+            implementation(libs.koinAndroidxCompose)
         }
 
         commonMain.dependencies {
