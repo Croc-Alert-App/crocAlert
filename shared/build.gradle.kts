@@ -47,12 +47,16 @@ kotlin {
             implementation(libs.ktorClientCio)
         }
 
-        iosMain.dependencies {
-            implementation(libs.ktorClientDarwin)
+        if (!isWindows) {
+            iosMain.dependencies {
+                implementation(libs.ktorClientDarwin)
+            }
         }
 
         commonTest.dependencies {
             implementation(libs.kotlin.test)
+            implementation(libs.kotlinxCoroutinesTest)
+            implementation(libs.ktorClientMock)
         }
     }
 }

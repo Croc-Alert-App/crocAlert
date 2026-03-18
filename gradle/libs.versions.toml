@@ -31,6 +31,9 @@ androidxLifecycle = "2.8.0"
 # Tests
 junit = "4.13.2"
 
+# Ktor (shared with inline deps in build files — centralised here for test deps)
+ktor = "2.3.12"
+
 [libraries]
 # ---------- Android core ----------
 androidxCoreKtx = "androidx.core:core-ktx:1.13.1"
@@ -65,6 +68,7 @@ androidxLifecycleRuntimeCompose = "org.jetbrains.androidx.lifecycle:lifecycle-ru
 # ---------- KotlinX ----------
 kotlinxDatetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "kotlinxDatetime" }
 kotlinxCoroutinesCore = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinxCoroutines" }
+kotlinxCoroutinesSwing = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-swing", version.ref = "kotlinxCoroutines" }
 
 # ---------- Ktor ----------
 ktorClientCore = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
@@ -81,6 +85,7 @@ kotlinxSerializationJson = { module = "org.jetbrains.kotlinx:kotlinx-serializati
 koinBom = { module = "io.insert-koin:koin-bom", version.ref = "koin" }
 koinCore = { module = "io.insert-koin:koin-core" }
 koinCompose = { module = "io.insert-koin:koin-compose" }
+koinAndroidxCompose = { module = "io.insert-koin:koin-androidx-compose", version.ref = "koin" }
 koinComposeViewmodelNavigation = { module = "io.insert-koin:koin-compose-viewmodel-navigation" }
 koinAndroidxCompose = { module = "io.insert-koin:koin-androidx-compose", version.ref = "koin" }
 
@@ -90,6 +95,8 @@ kotlin-testJunit = { module = "org.jetbrains.kotlin:kotlin-test-junit", version.
 junit = { module = "junit:junit", version.ref = "junit" }
 androidxTestExtJunit = "androidx.test.ext:junit:1.1.5"
 androidxEspressoCore = "androidx.test.espresso:espresso-core:3.5.1"
+kotlinxCoroutinesTest = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "kotlinxCoroutines" }
+ktorClientMock = { module = "io.ktor:ktor-client-mock", version.ref = "ktor" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }

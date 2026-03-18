@@ -1,13 +1,16 @@
 package crocalert.app.shared.data.remote
 
 import crocalert.app.shared.data.dto.AlertDto
+import crocalert.app.shared.data.dto.IdResponse
 import crocalert.app.shared.network.ApiResult
 import crocalert.app.shared.network.ApiRoutes
 import crocalert.app.shared.network.safeCall
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
+import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.delete
 import io.ktor.client.request.get
+import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.put
 import io.ktor.client.request.setBody
@@ -15,31 +18,42 @@ import io.ktor.http.ContentType
 import io.ktor.http.contentType
 
 class AlertRemoteDataSourceImpl(
-    private val client: HttpClient
+    private val client: HttpClient,
+    baseUrl: String
 ) : AlertRemoteDataSource {
 
+    private val alertsUrl = ApiRoutes.alertsUrl(baseUrl)
+
+    // Adds X-API-Key header when the key is configured (server auth guard enabled)
+    private fun HttpRequestBuilder.addAuth() {
+        val key = ApiRoutes.API_KEY
+        if (key.isNotBlank()) header("X-API-Key", key)
+    }
+
     override suspend fun getAlerts(): ApiResult<List<AlertDto>> =
-        safeCall { client.get(ApiRoutes.ALERTS).body() }
+        safeCall { client.get(alertsUrl) { addAuth() }.body() }
 
     override suspend fun getAlert(id: String): ApiResult<AlertDto> =
-        safeCall { client.get("${ApiRoutes.ALERTS}/$id").body() }
+        safeCall { client.get("$alertsUrl/$id") { addAuth() }.body() }
 
-    override suspend fun createAlert(dto: AlertDto): ApiResult<String> =
+    override suspend fun createAlert(dto: AlertDto): ApiResult<IdResponse> =
         safeCall {
-            client.post(ApiRoutes.ALERTS) {
+            client.post(alertsUrl) {
+                addAuth()
                 contentType(ContentType.Application.Json)
                 setBody(dto)
-            }.body() // <-- espera String
+            }.body<IdResponse>()
         }
 
     override suspend fun updateAlert(id: String, dto: AlertDto): ApiResult<Unit> =
         safeCall {
-            client.put("${ApiRoutes.ALERTS}/$id") {
+            client.put("$alertsUrl/$id") {
+                addAuth()
                 contentType(ContentType.Application.Json)
                 setBody(dto)
-            }
+            }.body<Unit>()
         }
 
     override suspend fun deleteAlert(id: String): ApiResult<Unit> =
-        safeCall { client.delete("${ApiRoutes.ALERTS}/$id") }
+        safeCall { client.delete("$alertsUrl/$id") { addAuth() }.body<Unit>() }
 }
