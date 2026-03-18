@@ -1,6 +1,5 @@
 package crocalert.app.domain.repository
 
-import crocalert.app.model.Alert
 import crocalert.app.model.Camera
 import kotlinx.coroutines.flow.Flow
 

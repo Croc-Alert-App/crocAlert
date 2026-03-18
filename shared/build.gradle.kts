@@ -47,12 +47,16 @@ kotlin {
             implementation("io.ktor:ktor-client-cio:2.3.12")
         }
 
-        iosMain.dependencies {
-            implementation("io.ktor:ktor-client-darwin:2.3.12")
+        if (!isWindows) {
+            iosMain.dependencies {
+                implementation("io.ktor:ktor-client-darwin:2.3.12")
+            }
         }
 
         commonTest.dependencies {
             implementation(libs.kotlin.test)
+            implementation(libs.kotlinxCoroutinesTest)
+            implementation(libs.ktorClientMock)
         }
     }
 }
