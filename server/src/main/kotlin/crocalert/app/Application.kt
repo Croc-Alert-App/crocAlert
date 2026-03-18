@@ -2,16 +2,14 @@ package crocalert.app
 
 import crocalert.server.FirebaseInit
 import crocalert.server.routes.alertRoutes
-import crocalert.server.routes.cameraRoutes
-import crocalert.server.routes.captureRoutes
 import crocalert.server.service.AlertService
-import crocalert.server.service.CameraService
-import crocalert.server.service.CaptureService
+import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.*
 import io.ktor.server.engine.*
 import io.ktor.server.netty.*
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import kotlinx.serialization.json.Json
@@ -29,27 +27,47 @@ fun main() {
 
 fun Application.module() {
     FirebaseInit.init()
+    configureSerialization()
+    configureAuth()
+    configureRouting(AlertService())
+}
 
-    val alertService = AlertService()
-    val captureService = CaptureService()
-    val cameraService = CameraService()
+/**
+ * Simple API key guard. Set CROC_API_KEY env var to enable.
+ * When the env var is blank the server runs in dev mode with no auth,
+ * so staging/prod deployments must always set the variable.
+ * The health-check endpoint (GET /) is excluded from auth.
+ */
+fun Application.configureAuth() {
+    val expectedKey = System.getenv("CROC_API_KEY").orEmpty()
+    if (expectedKey.isBlank()) return   // dev mode — skip
 
-    install(ContentNegotiation) {
-        json(
-            Json {
-                prettyPrint = true
-                ignoreUnknownKeys = true
-            }
-        )
+    intercept(ApplicationCallPipeline.Plugins) {
+        if (call.request.path() == "/") return@intercept
+        val provided = call.request.header("X-API-Key")
+        if (provided != expectedKey) {
+            call.respond(HttpStatusCode.Unauthorized, "Invalid or missing X-API-Key header")
+            finish()
+        }
+
+        alertRoutes(service)
     }
+}
 
+fun Application.configureSerialization() {
+    install(ContentNegotiation) {
+        json(Json {
+            prettyPrint = true
+            ignoreUnknownKeys = true
+        })
+    }
+}
+
+fun Application.configureRouting(service: AlertService = AlertService()) {
     routing {
         get("/") {
             call.respondText("Server running")
         }
-
-        alertRoutes(alertService)
-        captureRoutes(captureService)
-        cameraRoutes(cameraService)
+        alertRoutes(service)
     }
 }

@@ -3,10 +3,11 @@ package crocalert.app.model
 import kotlinx.datetime.Instant
 
 data class Camera(
-    val id: String = "",
+    val cameraId: String = "",
+    val siteId: String = "",
+    val code: String = "",
     val name: String = "",
     val isActive: Boolean = true,
-    val siteId: String? = null,
-    val createdAt: Long? = null,
-    val installedAt: Long? = null
+    val installedAt: Instant? = null,
+    val createdAt: Instant = Instant.fromEpochMilliseconds(0)
 )

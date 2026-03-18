@@ -5,18 +5,18 @@ import crocalert.app.model.AlertPriority
 import crocalert.app.model.AlertStatus
 import crocalert.app.shared.data.dto.AlertDto
 
-private fun statusFromString(value: String): AlertStatus =
-    runCatching { AlertStatus.valueOf(value) }.getOrElse { AlertStatus.OPEN }
-
-private fun priorityFromString(value: String): AlertPriority =
-    runCatching { AlertPriority.valueOf(value) }.getOrElse { AlertPriority.MEDIUM }
+private inline fun <reified T : Enum<T>> enumFromStringOrDefault(value: String, default: T): T =
+    runCatching { enumValueOf<T>(value) }.getOrElse {
+        println("AlertMapper: unknown ${T::class.simpleName} '$value', defaulting to $default")
+        default
+    }
 
 fun AlertDto.toModel(): Alert = Alert(
     id = id,
     captureId = captureId,
     createdAt = createdAt,
-    status = runCatching { AlertStatus.valueOf(status) }.getOrDefault(AlertStatus.OPEN),
-    priority = runCatching { AlertPriority.valueOf(priority) }.getOrDefault(AlertPriority.MEDIUM),
+    status = enumFromStringOrDefault(status, AlertStatus.OPEN),
+    priority = enumFromStringOrDefault(priority, AlertPriority.MEDIUM),
     assignedToUserId = assignedToUserId,
     closedAt = closedAt,
     notes = notes,
