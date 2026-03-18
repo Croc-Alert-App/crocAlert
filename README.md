@@ -8,10 +8,10 @@ A Kotlin Multiplatform (KMP) wildlife monitoring system that detects crocodile s
 
 ```
 crocAlert/
-├── composeApp/     # Compose Multiplatform UI — shared across Android, iOS, Desktop
+├── composeApp/     # Compose Multiplatform UI library — shared across Android, iOS, Desktop
 ├── shared/         # KMP business logic, domain models, network layer
 ├── server/         # Ktor backend server (Firebase Firestore + REST API)
-├── androidapp/     # Standalone Android prototype (legacy — not the active app)
+├── androidApp/     # Android application module (launcher MainActivity + manifest)
 └── iosApp/         # iOS SwiftUI entry point
 ```
 
@@ -19,10 +19,10 @@ crocAlert/
 
 | Module | Plugin | Purpose |
 |---|---|---|
-| `:composeApp` | `com.android.application` + KMP | Shared Compose UI (Android APK, iOS framework, Desktop JVM) |
+| `:composeApp` | `com.android.library` + KMP | Shared Compose UI library (consumed by `:androidApp`, iOS framework, Desktop JVM) |
 | `:shared` | `com.android.library` + KMP | Domain models, repository interfaces, network client, data mappers |
 | `:server` | Ktor | REST API server backed by Firebase Firestore |
-| `:androidapp` | `com.android.application` | Legacy standalone prototype — not used by the active shared UI |
+| `:androidApp` | `com.android.application` | Android app entry point — launcher `MainActivity` + manifest, hosts `:composeApp` UI |
 
 ---
 
@@ -32,11 +32,11 @@ CrocAlert follows a **clean architecture** pattern across the KMP stack. The dat
 
 ```
 Platform entry points
-  androidMain/MainActivity.kt   →  sets ApiRoutes.BASE for emulator
+  androidApp/MainActivity.kt    →  sets ApiRoutes.BASE for emulator
   jvmMain/main.kt               →  sets ApiRoutes.BASE for desktop
 
 composeApp / commonMain
-  App.kt                        →  shared Compose UI (AlertsScreen)
+  App.kt                        →  shared Compose UI (DashboardScreen)
                                     uses AlertRepository (interface only)
 
 shared / commonMain

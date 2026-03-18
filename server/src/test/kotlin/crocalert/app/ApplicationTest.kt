@@ -9,7 +9,7 @@ import kotlin.test.*
 class ApplicationTest {
 
     @Test
-    fun testRoot() = testApplication {
+    fun `GET slash returns server running`() = testApplication {
         application {
             module(initFirebase = false)
         }

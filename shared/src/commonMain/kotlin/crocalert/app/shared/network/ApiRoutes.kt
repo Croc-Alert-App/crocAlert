@@ -1,7 +1,13 @@
 package crocalert.app.shared.network
 
 object ApiRoutes {
-    // En emulador Android: 10.0.2.2 apunta a tu PC
-    var BASE: String = "http://10.0.2.2:8080"
-    val ALERTS: String get() = "$BASE/alerts"
+    // Empty by design — each platform's AppModule must supply its own base URL.
+    // Using this default on iOS or Desktop will produce an immediate, visible failure
+    // rather than silently connecting to the Android emulator loopback alias.
+    const val DEFAULT_BASE = ""
+
+    /** API key sent in X-API-Key header. Set before calling createAlertRepository(). */
+    var API_KEY: String = ""
+
+    fun alertsUrl(baseUrl: String) = "$baseUrl/alerts"
 }
