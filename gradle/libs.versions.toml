@@ -31,9 +31,6 @@ androidxLifecycle = "2.8.0"
 # Tests
 junit = "4.13.2"
 
-# Ktor (shared with inline deps in build files — centralised here for test deps)
-ktor = "2.3.12"
-
 [libraries]
 # ---------- Android core ----------
 androidxCoreKtx = "androidx.core:core-ktx:1.13.1"
@@ -87,7 +84,6 @@ koinCore = { module = "io.insert-koin:koin-core" }
 koinCompose = { module = "io.insert-koin:koin-compose" }
 koinAndroidxCompose = { module = "io.insert-koin:koin-androidx-compose", version.ref = "koin" }
 koinComposeViewmodelNavigation = { module = "io.insert-koin:koin-compose-viewmodel-navigation" }
-koinAndroidxCompose = { module = "io.insert-koin:koin-androidx-compose", version.ref = "koin" }
 
 # ---------- Tests ----------
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
