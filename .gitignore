@@ -3,7 +3,6 @@
 .gradle
 **/build/
 **/bin/
-**/bin/
 xcuserdata
 !src/**/build/
 local.properties
@@ -27,6 +26,8 @@ google-services.json
 GoogleService-Info.plist
 # Cursor
 .cursor/
+#Claude
+.claude/
 # Bmad
 _bmad-output/
 _bmad/
