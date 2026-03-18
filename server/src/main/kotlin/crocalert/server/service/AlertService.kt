@@ -9,8 +9,8 @@ import java.util.UUID
 
 class AlertService {
 
-    // Lazy so constructing AlertService() in tests doesn't touch Firestore
-    private val col by lazy { FirebaseInit.firestore().collection("alerts") }
+    private val db by lazy { FirebaseInit.firestore() }
+    private val col by lazy { db.collection("alerts") }
 
     suspend fun getAll(): List<AlertDto> {
         val snap = withContext(Dispatchers.IO) { col.get().get() }
@@ -38,7 +38,7 @@ class AlertService {
     suspend fun update(id: String, dto: AlertDto): Boolean {
         val ref = col.document(id)
         return withContext(Dispatchers.IO) {
-            FirebaseInit.firestore().runTransaction { transaction ->
+            db.runTransaction { transaction ->
                 val snapshot = transaction.get(ref).get()
                 if (!snapshot.exists()) return@runTransaction false
                 val normalized = dto.copy(
@@ -59,7 +59,7 @@ class AlertService {
     suspend fun delete(id: String): Boolean {
         val ref = col.document(id)
         return withContext(Dispatchers.IO) {
-            FirebaseInit.firestore().runTransaction { transaction ->
+            db.runTransaction { transaction ->
                 if (!transaction.get(ref).get().exists()) return@runTransaction false
                 transaction.delete(ref)
                 true

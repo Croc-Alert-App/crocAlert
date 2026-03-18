@@ -25,11 +25,12 @@ fun main() {
     ).start(wait = true)
 }
 
-fun Application.module() {
-    FirebaseInit.init()
+fun Application.module(initFirebase: Boolean = true) {
+    if (initFirebase) FirebaseInit.init()
+    val service = AlertService()
     configureSerialization()
     configureAuth()
-    configureRouting(AlertService())
+    configureRouting(service)
 }
 
 /**
@@ -49,8 +50,6 @@ fun Application.configureAuth() {
             call.respond(HttpStatusCode.Unauthorized, "Invalid or missing X-API-Key header")
             finish()
         }
-
-        alertRoutes(service)
     }
 }
 
