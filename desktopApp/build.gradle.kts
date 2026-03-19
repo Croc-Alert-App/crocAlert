@@ -1,5 +1,8 @@
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 
+group = "crocalert.app"
+version = "1.0.0"
+
 plugins {
     kotlin("jvm")
     alias(libs.plugins.composeMultiplatform)
@@ -22,6 +25,8 @@ compose.desktop {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
             packageName = "CrocAlert"
             packageVersion = "1.0.0"
+            vendor = "CrocAlert"
+            description = "CrocAlert desktop application"
         }
     }
 }
