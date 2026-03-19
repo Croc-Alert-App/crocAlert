@@ -6,6 +6,9 @@ object ApiRoutes {
     // rather than silently connecting to the Android emulator loopback alias.
     const val DEFAULT_BASE = ""
 
+    /** Base URL for the API. Set before calling createAlertRepository(). */
+    var BASE: String = DEFAULT_BASE
+
     /** API key sent in X-API-Key header. Set before calling createAlertRepository(). */
     var API_KEY: String = ""
 

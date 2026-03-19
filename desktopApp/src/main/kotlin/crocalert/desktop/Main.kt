@@ -7,7 +7,7 @@ import crocalert.app.shared.network.ApiRoutes
 import crocalert.app.theme.CrocAlertTheme
 
 fun main() = application {
-    ApiRoutes.BASE = "http://localhost:8080"
+    ApiRoutes.BASE = System.getenv("CROCALERT_API_URL") ?: "http://localhost:8080"
 
     Window(
         onCloseRequest = ::exitApplication,
