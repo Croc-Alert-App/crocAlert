@@ -16,6 +16,9 @@ pluginManagement {
         id("com.android.library") version "8.3.2"
     }
 }
+plugins {
+    id("org.gradle.toolchains.foojay-resolver-convention") version "0.10.0"
+}
 
 dependencyResolutionManagement {
     repositories {
@@ -27,7 +30,7 @@ dependencyResolutionManagement {
 rootProject.name = "crocAlert"
 
 include(":composeApp")
-include(":androidapp")
+include(":androidApp")
 include(":shared")
 include(":server")
 include(":desktopApp")

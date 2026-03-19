@@ -9,12 +9,12 @@ import kotlin.test.*
 class ApplicationTest {
 
     @Test
-    fun testRoot() = testApplication {
+    fun `GET slash returns server running`() = testApplication {
         application {
-            module()
+            module(initFirebase = false)
         }
         val response = client.get("/")
         assertEquals(HttpStatusCode.OK, response.status)
-        assertEquals("Ktor: ${Greeting().greet()}", response.bodyAsText())
+        assertEquals("Server running", response.bodyAsText())
     }
 }

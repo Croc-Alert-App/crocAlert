@@ -3,7 +3,7 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
-    alias(libs.plugins.androidLibrary)        // library — consumed by :androidapp (Android) and desktop jvm()
+    alias(libs.plugins.androidLibrary)
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
 }
@@ -29,18 +29,22 @@ kotlin {
         }
     }
 
-    jvm()
+    jvm {
+        mainRun {
+            mainClass = "crocalert.app.MainKt"
+        }
+    }
 
     sourceSets {
         androidMain.dependencies {
             implementation(libs.androidxActivityCompose)
-            implementation(libs.androidxLifecycleViewmodelCompose)
-            implementation(libs.androidxLifecycleRuntimeCompose)
             implementation(libs.composeUiToolingPreview)
-            implementation("io.insert-koin:koin-androidx-compose:3.5.6")
+            implementation(libs.koinAndroidxCompose)
         }
 
         commonMain.dependencies {
+            implementation(libs.androidxLifecycleViewmodelCompose)
+            implementation(libs.androidxLifecycleRuntimeCompose)
             implementation(project(":shared"))
 
             implementation(libs.composeRuntime)
@@ -48,6 +52,7 @@ kotlin {
             implementation(libs.composeMaterial3)
             implementation(libs.composeUi)
             implementation(libs.composeComponentsResources)
+            implementation(compose.materialIconsExtended)
             implementation(libs.kotlinxDatetime)
             implementation(libs.kotlinxCoroutinesCore)
 
@@ -58,10 +63,12 @@ kotlin {
 
         commonTest.dependencies {
             implementation(libs.kotlin.test)
+            implementation(libs.kotlinxCoroutinesTest)
         }
 
         jvmMain.dependencies {
             implementation(compose.desktop.currentOs)
+            implementation(libs.kotlinxCoroutinesSwing)
         }
     }
 }

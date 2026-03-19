@@ -16,6 +16,12 @@ composeBom = "2024.04.01"
 kotlinxDatetime = "0.6.1"
 kotlinxCoroutines = "1.8.1"
 
+# Ktor
+ktor = "2.3.12"
+
+# KotlinX Serialization
+kotlinxSerialization = "1.7.3"
+
 # Koin
 koin = "3.5.6"
 
@@ -59,11 +65,24 @@ androidxLifecycleRuntimeCompose = "org.jetbrains.androidx.lifecycle:lifecycle-ru
 # ---------- KotlinX ----------
 kotlinxDatetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "kotlinxDatetime" }
 kotlinxCoroutinesCore = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinxCoroutines" }
+kotlinxCoroutinesSwing = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-swing", version.ref = "kotlinxCoroutines" }
+
+# ---------- Ktor ----------
+ktorClientCore = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
+ktorClientContentNegotiation = { module = "io.ktor:ktor-client-content-negotiation", version.ref = "ktor" }
+ktorSerializationKotlinxJson = { module = "io.ktor:ktor-serialization-kotlinx-json", version.ref = "ktor" }
+ktorClientAndroid = { module = "io.ktor:ktor-client-android", version.ref = "ktor" }
+ktorClientCio = { module = "io.ktor:ktor-client-cio", version.ref = "ktor" }
+ktorClientDarwin = { module = "io.ktor:ktor-client-darwin", version.ref = "ktor" }
+
+# ---------- KotlinX Serialization ----------
+kotlinxSerializationJson = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinxSerialization" }
 
 # ---------- Koin ----------
 koinBom = { module = "io.insert-koin:koin-bom", version.ref = "koin" }
 koinCore = { module = "io.insert-koin:koin-core" }
 koinCompose = { module = "io.insert-koin:koin-compose" }
+koinAndroidxCompose = { module = "io.insert-koin:koin-androidx-compose", version.ref = "koin" }
 koinComposeViewmodelNavigation = { module = "io.insert-koin:koin-compose-viewmodel-navigation" }
 
 # ---------- Tests ----------
@@ -72,6 +91,8 @@ kotlin-testJunit = { module = "org.jetbrains.kotlin:kotlin-test-junit", version.
 junit = { module = "junit:junit", version.ref = "junit" }
 androidxTestExtJunit = "androidx.test.ext:junit:1.1.5"
 androidxEspressoCore = "androidx.test.espresso:espresso-core:3.5.1"
+kotlinxCoroutinesTest = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "kotlinxCoroutines" }
+ktorClientMock = { module = "io.ktor:ktor-client-mock", version.ref = "ktor" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }
@@ -82,3 +103,4 @@ kotlinMultiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref =
 
 composeMultiplatform = { id = "org.jetbrains.compose", version.ref = "composeMultiplatform" }
 composeCompiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+kotlinSerialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
