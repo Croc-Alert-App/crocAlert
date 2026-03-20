@@ -180,7 +180,7 @@ fun AlertListScreen(
             is AlertsUiState.Loading -> LoadingState(modifier = Modifier.fillMaxSize())
             is AlertsUiState.Empty -> EmptyStateView(
                 icon = Icons.Outlined.Notifications,
-                title = "Sin alertas",
+                title = "Sin ${activeTab.label.lowercase()}",
                 subtitle = state.message,
             )
             is AlertsUiState.Error -> ErrorState(
