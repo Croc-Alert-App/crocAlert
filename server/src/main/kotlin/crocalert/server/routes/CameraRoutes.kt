@@ -1,14 +1,14 @@
 package crocalert.server.routes
 
 import crocalert.app.shared.data.dto.CameraDto
-import crocalert.server.service.CameraService
+import crocalert.server.service.CameraServicePort
 import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 
-fun Route.cameraRoutes(service: CameraService) {
+fun Route.cameraRoutes(service: CameraServicePort) {
 
     route("/cameras") {
 

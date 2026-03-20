@@ -1,14 +1,14 @@
 package crocalert.server.routes
 
 import crocalert.app.shared.data.dto.CaptureDto
-import crocalert.server.service.CaptureService
+import crocalert.server.service.CaptureServicePort
 import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 
-fun Route.captureRoutes(service: CaptureService) {
+fun Route.captureRoutes(service: CaptureServicePort) {
     route("/captures") {
 
         get {

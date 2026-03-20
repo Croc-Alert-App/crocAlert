@@ -5,10 +5,10 @@ import crocalert.app.shared.data.dto.CameraDto
 import crocalert.server.FirebaseInit
 import java.util.UUID
 
-class CameraService {
+class CameraService : CameraServicePort {
 
-    private val db = FirebaseInit.firestore()
-    private val col = db.collection("camera")
+    private val db by lazy { FirebaseInit.firestore() }
+    private val col by lazy { db.collection("camera") }
 
     private fun DocumentSnapshot.toCameraDto(): CameraDto {
 

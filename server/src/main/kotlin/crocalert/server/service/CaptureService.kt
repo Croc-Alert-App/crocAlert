@@ -6,10 +6,10 @@ import com.google.cloud.Timestamp
 import com.google.cloud.firestore.DocumentSnapshot
 import java.util.UUID
 
-class CaptureService {
+class CaptureService : CaptureServicePort {
 
-    private val db = FirebaseInit.firestore()
-    private val col = db.collection("imagenes_drive")
+    private val db by lazy { FirebaseInit.firestore() }
+    private val col by lazy { db.collection("imagenes_drive") }
 
     private fun DocumentSnapshot.toCaptureDto(): CaptureDto {
         return CaptureDto(

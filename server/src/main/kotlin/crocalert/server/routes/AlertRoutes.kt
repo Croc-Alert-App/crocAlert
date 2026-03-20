@@ -2,14 +2,14 @@ package crocalert.server.routes
 
 
 import crocalert.app.shared.data.dto.AlertDto
-import crocalert.server.service.AlertService
+import crocalert.server.service.AlertServicePort
 import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 
-fun Route.alertRoutes(service: AlertService) {
+fun Route.alertRoutes(service: AlertServicePort) {
     route("/alerts") {
         get {
             call.respond(service.getAll())

@@ -7,7 +7,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.util.UUID
 
-class AlertService {
+class AlertService : AlertServicePort {
 
     private val db by lazy { FirebaseInit.firestore() }
     private val col by lazy { db.collection("alerts") }
