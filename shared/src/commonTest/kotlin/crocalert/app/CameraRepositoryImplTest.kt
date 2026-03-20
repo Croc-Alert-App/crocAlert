@@ -111,6 +111,21 @@ class CameraRepositoryImplTest {
         assertEquals(404, (result as ApiResult.Error).code)
     }
 
+    // ── getCapturesByCamera — ordering (R-08) ─────────────────────────────────
+
+    @Test
+    fun `getCapturesByCamera returns captures in the same order as the remote`() = runTest {
+        val cap1 = CaptureDto(id = "cap-a", cameraId = "cam-1", captureTime = 3_000L)
+        val cap2 = CaptureDto(id = "cap-b", cameraId = "cam-1", captureTime = 1_000L)
+        val cap3 = CaptureDto(id = "cap-c", cameraId = "cam-1", captureTime = 2_000L)
+        val fake = FakeCameraRemoteDataSource(
+            getCapturesResult = ApiResult.Success(listOf(cap1, cap2, cap3))
+        )
+        val result = repo(fake).getCapturesByCamera("cam-1") as ApiResult.Success
+        // Order from remote must be preserved — no client-side sorting applied.
+        assertEquals(listOf("cap-a", "cap-b", "cap-c"), result.data.map { it.id })
+    }
+
     // ── unimplemented stubs ───────────────────────────────────────────────────
 
     @Test

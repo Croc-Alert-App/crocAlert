@@ -116,11 +116,10 @@ class AlertRepositoryImplTest {
         val initial = r.observeAlerts().first()
         assertEquals(1, initial.size)
 
-        // Make the next remote refresh fail (triggered by createAlert → refresh())
+        // createAlert() triggers a background refresh — make it fail
         fake.getAlertsResult = ApiResult.Error("Server down")
         r.createAlert(Alert(captureId = "cap-2", title = "New"))
 
-        // Cache retains the original data — not wiped by the failed refresh
         val afterError = r.observeAlerts().first()
         assertEquals(1, afterError.size)
         assertEquals("alert-1", afterError[0].id)
@@ -152,14 +151,11 @@ class AlertRepositoryImplTest {
             deleteResult = ApiResult.Success(Unit)
         )
         val r = repo(fake)
-        // Confirm alert exists
         assertNotNull(r.observeAlert("alert-1").first())
 
-        // Delete it and make the next remote call return empty list
         fake.getAlertsResult = ApiResult.Success(emptyList())
         r.deleteAlert("alert-1")
 
-        // Now it should be gone
         assertNull(r.observeAlert("alert-1").first())
     }
 
