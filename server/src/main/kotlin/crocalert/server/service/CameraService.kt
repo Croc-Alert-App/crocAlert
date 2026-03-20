@@ -25,18 +25,18 @@ class CameraService : CameraServicePort {
         )
     }
 
-    suspend fun getAll(): List<CameraDto> {
+    override suspend fun getAll(): List<CameraDto> {
         val snap = col.get().get()
         return snap.documents.map { it.toCameraDto() }
     }
 
-    suspend fun getById(id: String): CameraDto? {
+    override suspend fun getById(id: String): CameraDto? {
         val doc = col.document(id).get().get()
         if (!doc.exists()) return null
         return doc.toCameraDto()
     }
 
-    suspend fun create(dto: CameraDto): String {
+    override suspend fun create(dto: CameraDto): String {
 
         val id = dto.id.ifBlank { UUID.randomUUID().toString() }
 
@@ -53,7 +53,7 @@ class CameraService : CameraServicePort {
         return id
     }
 
-    suspend fun update(id: String, dto: CameraDto): Boolean {
+    override suspend fun update(id: String, dto: CameraDto): Boolean {
 
         val ref = col.document(id)
         val current = ref.get().get()
@@ -73,7 +73,7 @@ class CameraService : CameraServicePort {
         return true
     }
 
-    suspend fun delete(id: String): Boolean {
+    override suspend fun delete(id: String): Boolean {
 
         val ref = col.document(id)
         val current = ref.get().get()

@@ -30,18 +30,18 @@ class CaptureService : CaptureServicePort {
         )
     }
 
-    suspend fun getAll(): List<CaptureDto> {
+    override suspend fun getAll(): List<CaptureDto> {
         val snap = col.get().get()
         return snap.documents.map { it.toCaptureDto() }
     }
 
-    suspend fun getById(id: String): CaptureDto? {
+    override suspend fun getById(id: String): CaptureDto? {
         val doc = col.document(id).get().get()
         if (!doc.exists()) return null
         return doc.toCaptureDto()
     }
 
-    suspend fun getByCameraId(cameraId: String): List<CaptureDto> {
+    override suspend fun getByCameraId(cameraId: String): List<CaptureDto> {
         val snap = col
             .whereEqualTo("cameraId", cameraId)
             .get()
@@ -51,7 +51,7 @@ class CaptureService : CaptureServicePort {
             .map { it.toCaptureDto() }
             .sortedByDescending { it.captureTime ?: 0L }
     }
-    suspend fun getByFolder(folder: String): List<CaptureDto> {
+    override suspend fun getByFolder(folder: String): List<CaptureDto> {
         val snap = col
             .whereEqualTo("folder", folder)
             .get()
@@ -62,7 +62,7 @@ class CaptureService : CaptureServicePort {
             .sortedByDescending { it.captureTime ?: 0L }
     }
 
-    suspend fun create(dto: CaptureDto): String {
+    override suspend fun create(dto: CaptureDto): String {
         val id = dto.id.takeIf { it.isNotBlank() } ?: UUID.randomUUID().toString()
 
         val data = mutableMapOf<String, Any?>(
@@ -96,7 +96,7 @@ class CaptureService : CaptureServicePort {
         return id
     }
 
-    suspend fun update(id: String, dto: CaptureDto): Boolean {
+    override suspend fun update(id: String, dto: CaptureDto): Boolean {
         val ref = col.document(id)
         val current = ref.get().get()
         if (!current.exists()) return false
@@ -132,7 +132,7 @@ class CaptureService : CaptureServicePort {
         return true
     }
 
-    suspend fun delete(id: String): Boolean {
+    override suspend fun delete(id: String): Boolean {
         val ref = col.document(id)
         val current = ref.get().get()
         if (!current.exists()) return false

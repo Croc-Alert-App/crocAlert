@@ -12,17 +12,17 @@ class AlertService : AlertServicePort {
     private val db by lazy { FirebaseInit.firestore() }
     private val col by lazy { db.collection("alerts") }
 
-    suspend fun getAll(): List<AlertDto> {
+    override suspend fun getAll(): List<AlertDto> {
         val snap = withContext(Dispatchers.IO) { col.get().get() }
         return snap.documents.map { it.toDto() }
     }
 
-    suspend fun getById(id: String): AlertDto? {
+    override suspend fun getById(id: String): AlertDto? {
         val doc = withContext(Dispatchers.IO) { col.document(id).get().get() }
         return if (doc.exists()) doc.toDto() else null
     }
 
-    suspend fun create(dto: AlertDto): String {
+    override suspend fun create(dto: AlertDto): String {
         val id = UUID.randomUUID().toString()   // always server-generated
         val normalized = dto.copy(
             id = id,
@@ -35,7 +35,7 @@ class AlertService : AlertServicePort {
         return id
     }
 
-    suspend fun update(id: String, dto: AlertDto): Boolean {
+    override suspend fun update(id: String, dto: AlertDto): Boolean {
         val ref = col.document(id)
         return withContext(Dispatchers.IO) {
             db.runTransaction { transaction ->
@@ -56,7 +56,7 @@ class AlertService : AlertServicePort {
         }
     }
 
-    suspend fun delete(id: String): Boolean {
+    override suspend fun delete(id: String): Boolean {
         val ref = col.document(id)
         return withContext(Dispatchers.IO) {
             db.runTransaction { transaction ->
