@@ -1,4 +1,3 @@
-import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
@@ -97,14 +96,3 @@ dependencies {
     debugImplementation(libs.composeUiTooling)
 }
 
-compose.desktop {
-    application {
-        mainClass = "crocalert.app.MainKt"
-
-        nativeDistributions {
-            targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
-            packageName = "crocalert.app"
-            packageVersion = "1.0.0"
-        }
-    }
-}
