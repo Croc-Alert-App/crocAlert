@@ -28,6 +28,9 @@ koin = "3.5.6"
 # AndroidX lifecycle (Compose)
 androidxLifecycle = "2.8.0"
 
+# Compose Navigation (Multiplatform)
+navigationCompose = "2.7.0-alpha07"
+
 # Tests
 junit = "4.13.2"
 turbine = "1.2.0"
@@ -63,6 +66,9 @@ composeComponentsResources = { module = "org.jetbrains.compose.components:compon
 # ---------- Lifecycle Compose (JetBrains AndroidX for MPP) ----------
 androidxLifecycleViewmodelCompose = "org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-compose:2.8.0"
 androidxLifecycleRuntimeCompose = "org.jetbrains.androidx.lifecycle:lifecycle-runtime-compose:2.8.0"
+
+# ---------- Navigation Compose (JetBrains AndroidX for MPP) ----------
+navigationCompose = { module = "org.jetbrains.androidx.navigation:navigation-compose", version.ref = "navigationCompose" }
 
 # ---------- KotlinX ----------
 kotlinxDatetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "kotlinxDatetime" }

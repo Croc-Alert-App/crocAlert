@@ -34,6 +34,7 @@ dependencies {
     implementation(project(":composeApp"))
     implementation(project(":shared"))
     implementation("androidx.activity:activity-compose:1.9.0")
+    testImplementation(libs.junit)
     androidTestImplementation(libs.androidxTestExtJunit)
     androidTestImplementation(libs.androidxEspressoCore)
     androidTestImplementation(platform(libs.androidxComposeBom))

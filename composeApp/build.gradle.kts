@@ -45,6 +45,7 @@ kotlin {
         commonMain.dependencies {
             implementation(libs.androidxLifecycleViewmodelCompose)
             implementation(libs.androidxLifecycleRuntimeCompose)
+            implementation(libs.navigationCompose)
             implementation(project(":shared"))
 
             implementation(libs.composeRuntime)
