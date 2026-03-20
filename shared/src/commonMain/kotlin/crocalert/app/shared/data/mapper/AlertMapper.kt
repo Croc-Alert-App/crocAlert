@@ -14,6 +14,8 @@ private inline fun <reified T : Enum<T>> enumFromStringOrDefault(value: String, 
 fun AlertDto.toModel(): Alert = Alert(
     id = id,
     captureId = captureId,
+    cameraId = cameraId,
+    aiConfidence = aiConfidence,
     createdAt = createdAt,
     status = enumFromStringOrDefault(status, AlertStatus.OPEN),
     priority = enumFromStringOrDefault(priority, AlertPriority.MEDIUM),
@@ -26,6 +28,8 @@ fun AlertDto.toModel(): Alert = Alert(
 fun Alert.toDto(): AlertDto = AlertDto(
     id = id,
     captureId = captureId,
+    cameraId = cameraId,
+    aiConfidence = aiConfidence,
     createdAt = createdAt,
     status = status.name,
     priority = priority.name,
