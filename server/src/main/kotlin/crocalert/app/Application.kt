@@ -29,12 +29,12 @@ fun main() {
     ).start(wait = true)
 }
 
-fun Application.module() {
-    FirebaseInit.init()
+fun Application.module(initFirebase: Boolean = true) {
+    if (initFirebase) FirebaseInit.init()
     configureSerialization()
     configureAuth()
     configureRouting(
-        alertService  = AlertService(),
+        alertService   = AlertService(),
         captureService = CaptureService(),
         cameraService  = CameraService()
     )

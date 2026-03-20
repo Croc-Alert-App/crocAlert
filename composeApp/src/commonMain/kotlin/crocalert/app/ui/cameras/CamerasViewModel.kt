@@ -32,6 +32,7 @@ class CamerasViewModel(
     private val _selectedFilter = MutableStateFlow(CameraFilter.All)
     val selectedFilter: StateFlow<CameraFilter> = _selectedFilter.asStateFlow()
 
+    /** ID of the currently expanded card; null when all cards are collapsed. */
     private val _expandedCameraId = MutableStateFlow<String?>(null)
     val expandedCameraId: StateFlow<String?> = _expandedCameraId.asStateFlow()
 
@@ -39,14 +40,17 @@ class CamerasViewModel(
         viewModelScope.launch { loadData() }
     }
 
+    /** Expands the given card and collapses any previously open one. Tapping the open card collapses it. */
     fun toggleExpand(id: String) {
         _expandedCameraId.value = if (_expandedCameraId.value == id) null else id
     }
 
+    /** Per-status counts from the full unfiltered list, used to label the filter chips. */
     val statusCounts: StateFlow<Map<CameraStatus, Int>> = _cameras
         .map { list -> CameraStatus.entries.associateWith { s -> list.count { it.status == s } } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
 
+    /** Camera list after applying search query and status filter, sorted by severity. */
     val filteredCameras: StateFlow<List<CameraUiItem>> = combine(
         _cameras, _searchQuery, _selectedFilter
     ) { cameras, query, filter ->
@@ -62,10 +66,12 @@ class CamerasViewModel(
 
     fun onSearchChange(query: String) { _searchQuery.value = query }
     fun onFilterSelect(filter: CameraFilter) { _selectedFilter.value = filter }
+
     fun clearSearch() {
         _searchQuery.value = ""
         _selectedFilter.value = CameraFilter.All
     }
+
     fun retry() { viewModelScope.launch { loadData() } }
 
     private suspend fun loadData() {

@@ -8,6 +8,8 @@ import crocalert.app.shared.data.remote.AlertRemoteDataSource
 import crocalert.app.shared.network.ApiResult
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
@@ -18,6 +20,9 @@ class AlertRepositoryImpl(
 
     // null = not yet loaded; empty list = server returned zero alerts (valid state)
     private val alertsFlow = MutableStateFlow<List<Alert>?>(null)
+
+    private val _lastRefreshError = MutableStateFlow<String?>(null)
+    override val lastRefreshError: StateFlow<String?> = _lastRefreshError.asStateFlow()
 
     override fun observeAlerts(): Flow<List<Alert>> = flow {
         ensureLoaded()
@@ -50,11 +55,15 @@ class AlertRepositoryImpl(
         if (alertsFlow.value == null) refresh()
     }
 
-    // Silently retains stale data on error to avoid killing observers.
+    // Retains stale data on error to avoid wiping the observer cache.
+    // Signals the error via lastRefreshError so the UI can show a sync warning.
     private suspend fun refresh() {
         when (val res = remote.getAlerts()) {
-            is ApiResult.Success -> alertsFlow.value = res.data.map { it.toModel() }
-            is ApiResult.Error -> { /* stale data retained */ }
+            is ApiResult.Success -> {
+                alertsFlow.value = res.data.map { it.toModel() }
+                _lastRefreshError.value = null
+            }
+            is ApiResult.Error -> _lastRefreshError.value = res.message
         }
     }
 

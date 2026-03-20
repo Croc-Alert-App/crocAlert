@@ -11,8 +11,7 @@ class ApplicationTest {
     @Test
     fun `GET slash returns server running`() = testApplication {
         application {
-            configureSerialization()
-            configureRouting()
+            module(initFirebase = false)
         }
         val response = client.get("/")
         assertEquals(HttpStatusCode.OK, response.status)
