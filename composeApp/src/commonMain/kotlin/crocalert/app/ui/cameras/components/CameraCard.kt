@@ -50,6 +50,7 @@ fun CameraCard(
     camera: CameraUiItem,
     expanded: Boolean,
     onToggle: () -> Unit,
+    onHistoryClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Card(
@@ -178,7 +179,7 @@ fun CameraCard(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.End,
                         ) {
-                            TextButton(onClick = {}) {
+                            TextButton(onClick = onHistoryClick) {
                                 Text(
                                     text = "Historial",
                                     style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),

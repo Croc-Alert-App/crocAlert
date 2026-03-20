@@ -36,6 +36,9 @@ class CamerasViewModel(
     private val _expandedCameraId = MutableStateFlow<String?>(null)
     val expandedCameraId: StateFlow<String?> = _expandedCameraId.asStateFlow()
 
+    private val _historyCamera = MutableStateFlow<CameraUiItem?>(null)
+    val historyCamera: StateFlow<CameraUiItem?> = _historyCamera.asStateFlow()
+
     init {
         viewModelScope.launch { loadData() }
     }
@@ -44,6 +47,9 @@ class CamerasViewModel(
     fun toggleExpand(id: String) {
         _expandedCameraId.value = if (_expandedCameraId.value == id) null else id
     }
+
+    fun openHistory(camera: CameraUiItem) { _historyCamera.value = camera }
+    fun closeHistory() { _historyCamera.value = null }
 
     /** Per-status counts from the full unfiltered list, used to label the filter chips. */
     val statusCounts: StateFlow<Map<CameraStatus, Int>> = _cameras

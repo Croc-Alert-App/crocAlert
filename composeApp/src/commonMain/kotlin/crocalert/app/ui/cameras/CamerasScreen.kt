@@ -47,6 +47,17 @@ import crocalert.app.ui.components.EmptyStateView
 
 @Composable
 fun CamerasScreen(viewModel: CamerasViewModel = viewModel { CamerasViewModel() }) {
+    val historyCamera by viewModel.historyCamera.collectAsState()
+
+    historyCamera?.let { camera ->
+        CameraHistoryScreen(
+            cameraId = camera.id,
+            cameraName = camera.name,
+            onBack = viewModel::closeHistory,
+        )
+        return
+    }
+
     val filteredCameras by viewModel.filteredCameras.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
     val selectedFilter by viewModel.selectedFilter.collectAsState()
@@ -108,6 +119,7 @@ fun CamerasScreen(viewModel: CamerasViewModel = viewModel { CamerasViewModel() }
                         camera = camera,
                         expanded = expandedCameraId == camera.id,
                         onToggle = { viewModel.toggleExpand(camera.id) },
+                        onHistoryClick = { viewModel.openHistory(camera) },
                     )
                 }
                 item { Spacer(Modifier.height(8.dp)) }
