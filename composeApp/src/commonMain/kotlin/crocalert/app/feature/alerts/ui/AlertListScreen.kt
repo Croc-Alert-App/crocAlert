@@ -44,7 +44,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import crocalert.app.feature.alerts.data.MockAlertRepository
+import crocalert.app.shared.createAlertRepository
 import crocalert.app.feature.alerts.presentation.AlertFilter
 import crocalert.app.feature.alerts.presentation.AlertsUiState
 import crocalert.app.feature.alerts.presentation.AlertsViewModel
@@ -81,7 +81,8 @@ private fun List<Alert>.forTab(tab: AlertTab): List<Alert> =
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AlertListScreen(
-    viewModel: AlertsViewModel = remember { AlertsViewModel(MockAlertRepository()) },
+    onAlertClick: (String) -> Unit = {},
+    viewModel: AlertsViewModel = remember { AlertsViewModel(createAlertRepository()) },
 ) {
     DisposableEffect(viewModel) { onDispose { viewModel.clear() } }
 
@@ -202,7 +203,7 @@ fun AlertListScreen(
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         items(tabAlerts, key = { it.id }) { alert ->
-                            AlertListItem(alert = alert)
+                            AlertListItem(alert = alert, onClick = { onAlertClick(alert.id) })
                         }
                         item { Spacer(Modifier.height(8.dp)) }
                     }

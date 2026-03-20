@@ -37,7 +37,10 @@ import crocalert.app.ui.components.StatCard
 import crocalert.app.ui.components.SyncBanner
 
 @Composable
-fun DashboardScreen(viewModel: DashboardViewModel = viewModel { DashboardViewModel() }) {
+fun DashboardScreen(
+    onAlertClick: (String) -> Unit = {},
+    viewModel: DashboardViewModel = viewModel { DashboardViewModel() },
+) {
     val selectedTab by viewModel.selectedTab.collectAsState()
     val syncStatus by viewModel.syncStatus.collectAsState()
     val uiState by viewModel.uiState.collectAsState()
@@ -56,9 +59,9 @@ fun DashboardScreen(viewModel: DashboardViewModel = viewModel { DashboardViewMod
                 is DashboardUiState.Loading -> LoadingContent()
                 is DashboardUiState.Error -> ErrorContent(state.message, onRetry = viewModel::retry)
                 is DashboardUiState.Success -> when (selectedTab) {
-                    DashboardTab.Home -> DashboardContent(state.data)
+                    DashboardTab.Home -> DashboardContent(state.data, onAlertClick = onAlertClick)
                     DashboardTab.Cameras -> CamerasScreen()
-                    DashboardTab.Alerts -> AlertListScreen()
+                    DashboardTab.Alerts -> AlertListScreen(onAlertClick = onAlertClick)
                     DashboardTab.Profile -> EmptyStateView(
                         icon = Icons.Outlined.Person,
                         title = "Perfil no disponible",
@@ -99,13 +102,13 @@ private fun ErrorContent(message: String, onRetry: () -> Unit) {
 }
 
 @Composable
-private fun DashboardContent(data: DashboardData) {
+private fun DashboardContent(data: DashboardData, onAlertClick: (String) -> Unit) {
     LazyColumn(modifier = Modifier.fillMaxSize()) {
         item { HeaderSection(data) }
         item { StatsGridSection(data) }
         item { NetworkTrendSection(data) }
         item { MetadataQualitySection(data) }
-        item { RecentActivitySection(data) }
+        item { RecentActivitySection(data, onAlertClick = onAlertClick) }
         item { Spacer(modifier = Modifier.height(16.dp)) }
     }
 }
@@ -231,7 +234,7 @@ private fun MetadataQualitySection(data: DashboardData) {
 }
 
 @Composable
-private fun RecentActivitySection(data: DashboardData) {
+private fun RecentActivitySection(data: DashboardData, onAlertClick: (String) -> Unit) {
     Column(modifier = Modifier.padding(horizontal = 20.dp)) {
         Text(
             text = "Actividad reciente",
@@ -239,9 +242,20 @@ private fun RecentActivitySection(data: DashboardData) {
             color = MaterialTheme.colorScheme.onSurface
         )
         Spacer(modifier = Modifier.height(12.dp))
-        data.recentActivity.forEachIndexed { index, event ->
-            ActivityEventCard(event = event)
-            if (index < data.recentActivity.lastIndex) Spacer(modifier = Modifier.height(8.dp))
+        if (data.recentActivity.isEmpty()) {
+            Text(
+                text = "Sin actividad reciente hoy.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        } else {
+            data.recentActivity.forEachIndexed { index, event ->
+                ActivityEventCard(
+                    event = event,
+                    onClick = event.alertId?.let { id -> { onAlertClick(id) } },
+                )
+                if (index < data.recentActivity.lastIndex) Spacer(modifier = Modifier.height(8.dp))
+            }
         }
     }
 }

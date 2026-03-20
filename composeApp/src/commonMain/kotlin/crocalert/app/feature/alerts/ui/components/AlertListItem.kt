@@ -1,5 +1,6 @@
 package crocalert.app.feature.alerts.ui.components
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -50,6 +51,7 @@ import kotlinx.datetime.Clock
 @Composable
 fun AlertListItem(
     alert: Alert,
+    onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val accentColor = when (alert.priority) {
@@ -74,7 +76,7 @@ fun AlertListItem(
         else MaterialTheme.colorScheme.surface
 
     Card(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth().clickable { onClick() },
         shape = RoundedCornerShape(8.dp),
         colors = CardDefaults.cardColors(containerColor = cardBackground),
         elevation = CardDefaults.cardElevation(

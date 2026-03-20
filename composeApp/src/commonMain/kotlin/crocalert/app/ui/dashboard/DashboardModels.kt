@@ -21,7 +21,8 @@ data class ActivityEvent(
     val title: String,
     val timeAgo: String,
     val severity: String,
-    val isNew: Boolean = false
+    val isNew: Boolean = false,
+    val alertId: String? = null,
 )
 
 // Navigation and sync state — defined here so ViewModels never import from UI component files.
