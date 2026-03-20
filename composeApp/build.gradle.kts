@@ -28,11 +28,7 @@ kotlin {
         }
     }
 
-    jvm {
-        mainRun {
-            mainClass = "crocalert.app.MainKt"
-        }
-    }
+    jvm()
 
     sourceSets {
         androidMain.dependencies {
