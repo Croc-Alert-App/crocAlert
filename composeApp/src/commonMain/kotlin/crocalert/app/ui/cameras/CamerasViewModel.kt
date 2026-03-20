@@ -15,10 +15,11 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 class CamerasViewModel(
-    private val cameraRepository: CameraRepository = AppModule.provideCameraRepository()
+    private val cameraRepository: CameraRepository = AppModule.provideCameraRepository(),
+    initialCameras: List<CameraUiItem> = emptyList()
 ) : ViewModel() {
 
-    private val _cameras = MutableStateFlow<List<CameraUiItem>>(emptyList())
+    private val _cameras = MutableStateFlow<List<CameraUiItem>>(initialCameras)
 
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
@@ -40,7 +41,9 @@ class CamerasViewModel(
     val historyCamera: StateFlow<CameraUiItem?> = _historyCamera.asStateFlow()
 
     init {
-        viewModelScope.launch { loadData() }
+        if (initialCameras.isEmpty()) {
+            viewModelScope.launch { loadData() }
+        }
     }
 
     /** Expands the given card and collapses any previously open one. Tapping the open card collapses it. */
