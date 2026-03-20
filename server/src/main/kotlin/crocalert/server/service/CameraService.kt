@@ -1,7 +1,8 @@
 package crocalert.server.service
-import crocalert.server.FirebaseInit
+import com.google.cloud.firestore.DocumentReference
 import com.google.cloud.firestore.DocumentSnapshot
 import crocalert.app.shared.data.dto.CameraDto
+import crocalert.server.FirebaseInit
 import java.util.UUID
 
 class CameraService {
@@ -18,7 +19,7 @@ class CameraService {
             id = id,
             name = getString("name") ?: "",
             isActive = getBoolean("isActive") ?: true,
-            siteId = getDocumentReference("siteId")?.path ?: getString("siteId"),
+            siteId = (get("siteId") as? DocumentReference)?.path ?: getString("siteId"),
             createdAt = created,
             installedAt = installed
         )
