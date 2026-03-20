@@ -26,10 +26,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Person
 import crocalert.app.theme.CrocAmber
 import crocalert.app.theme.CrocBlue
+import crocalert.app.feature.alerts.ui.AlertListScreen
 import crocalert.app.ui.cameras.CamerasScreen
 import crocalert.app.ui.components.BottomNavBar
 import crocalert.app.ui.components.EmptyStateView
@@ -58,11 +58,7 @@ fun DashboardScreen(viewModel: DashboardViewModel = viewModel { DashboardViewMod
                 is DashboardUiState.Success -> when (selectedTab) {
                     DashboardTab.Home -> DashboardContent(state.data)
                     DashboardTab.Cameras -> CamerasScreen()
-                    DashboardTab.Alerts -> EmptyStateView(
-                        icon = Icons.Outlined.Notifications,
-                        title = "Sin alertas activas",
-                        subtitle = "No hay alertas activas en este momento."
-                    )
+                    DashboardTab.Alerts -> AlertListScreen()
                     DashboardTab.Profile -> EmptyStateView(
                         icon = Icons.Outlined.Person,
                         title = "Perfil no disponible",

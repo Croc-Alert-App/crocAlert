@@ -2,7 +2,6 @@ package crocalert.app.feature.alerts.presentation
 
 import crocalert.app.domain.repository.AlertRepository
 import crocalert.app.model.Alert
-import crocalert.app.model.AlertPriority
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -13,20 +12,20 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.launch
+import kotlinx.datetime.Clock
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.atStartOfDayIn
+import kotlinx.datetime.toLocalDateTime
 
 /**
  * State holder for the Alerts List screen.
  *
- * Designed as a plain Kotlin class so it works across all KMP targets without
- * requiring the Android ViewModel lifecycle. Pass a [CoroutineScope] at
- * construction time; default scope uses [Dispatchers.Main] for production and
- * can be replaced with a [kotlinx.coroutines.test.TestScope] in unit tests.
+ * Single responsibility: owns the reactive state of the screen
+ * (loading, error, filter, sort, custom range).
  *
  * Replacing mock data with real API data:
- * 1. Create a production [AlertRepository] implementation in :shared
- *    (RemoteAlertRepositoryImpl already exists there as a reference).
- * 2. Pass the real implementation to this constructor via DI (Koin module).
- * 3. This class and all UI composables remain unchanged.
+ * 1. Create a production [AlertRepository] in :shared.
+ * 2. Provide it via Koin. No changes to this class or the UI are needed.
  */
 class AlertsViewModel(
     private val repository: AlertRepository,
@@ -38,33 +37,65 @@ class AlertsViewModel(
     private val _activeFilter = MutableStateFlow(AlertFilter.ALL)
     val activeFilter: StateFlow<AlertFilter> = _activeFilter.asStateFlow()
 
-    /** Raw sorted list cached after load; filtering is applied client-side. */
-    private var allAlerts: List<Alert> = emptyList()
+    private val _sortDirection = MutableStateFlow(SortDirection.DESC)
+    val sortDirection: StateFlow<SortDirection> = _sortDirection.asStateFlow()
+
+    private val _customRange = MutableStateFlow<DateRange?>(null)
+    val customRange: StateFlow<DateRange?> = _customRange.asStateFlow()
+
+    private var rawAlerts: List<Alert> = emptyList()
     private var loadJob: Job? = null
 
-    init {
-        loadAlerts()
-    }
+    init { loadAlerts() }
 
-    fun retry() {
-        loadAlerts()
-    }
+    fun retry() = loadAlerts()
+
+    /** Placeholder for future Firebase sync — currently reloads from the repository. */
+    fun refresh() = loadAlerts()
 
     fun setFilter(filter: AlertFilter) {
         _activeFilter.value = filter
-        applyFilter()
+        applyFilterAndSort()
     }
 
-    private fun applyFilter() {
+    fun toggleSort() {
+        _sortDirection.value =
+            if (_sortDirection.value == SortDirection.DESC) SortDirection.ASC else SortDirection.DESC
+        applyFilterAndSort()
+    }
+
+    /** Activates the CUSTOM filter with the given date range and persists it for the UI chip label. */
+    fun setCustomRange(startMs: Long, endMs: Long) {
+        _customRange.value = DateRange(startMs, endMs)
+        _activeFilter.value = AlertFilter.CUSTOM
+        applyFilterAndSort()
+    }
+
+    private fun applyFilterAndSort() {
+        val now = Clock.System.now().toEpochMilliseconds()
+
         val filtered = when (_activeFilter.value) {
-            AlertFilter.ALL -> allAlerts
-            AlertFilter.ALERTS -> allAlerts.filter {
-                it.priority == AlertPriority.CRITICAL || it.priority == AlertPriority.HIGH
+            AlertFilter.ALL -> rawAlerts
+            AlertFilter.TODAY -> rawAlerts.filter { it.createdAt >= startOfTodayMs() }
+            AlertFilter.THIS_WEEK -> rawAlerts.filter { it.createdAt >= now - SEVEN_DAYS_MS }
+            AlertFilter.THIS_MONTH -> rawAlerts.filter { it.createdAt >= now - THIRTY_DAYS_MS }
+            AlertFilter.CUSTOM -> {
+                val range = _customRange.value
+                if (range == null) {
+                    _uiState.value = AlertsUiState.Empty("Tap 'Custom' to select a date range.")
+                    return
+                }
+                // Include the full end-day by extending the end timestamp to 23:59:59.999.
+                rawAlerts.filter { it.createdAt in range.startMs..(range.endMs + DAY_MS - 1L) }
             }
-            AlertFilter.PRE_ALERTS -> allAlerts.filter { it.priority == AlertPriority.MEDIUM }
-            AlertFilter.INFO -> allAlerts.filter { it.priority == AlertPriority.LOW }
         }
-        _uiState.value = if (filtered.isEmpty()) AlertsUiState.Empty else AlertsUiState.Success(filtered)
+
+        val sorted = when (_sortDirection.value) {
+            SortDirection.DESC -> filtered.sortedByDescending { it.createdAt }
+            SortDirection.ASC -> filtered.sortedBy { it.createdAt }
+        }
+
+        _uiState.value = if (sorted.isEmpty()) AlertsUiState.Empty() else AlertsUiState.Success(sorted)
     }
 
     private fun loadAlerts() {
@@ -78,14 +109,22 @@ class AlertsViewModel(
                     )
                 }
                 .collect { alerts ->
-                    allAlerts = alerts.sortedByDescending { it.createdAt }
-                    applyFilter()
+                    rawAlerts = alerts
+                    applyFilterAndSort()
                 }
         }
     }
 
-    /** Release the internal scope when the composable leaves composition. */
-    fun clear() {
-        coroutineScope.cancel()
+    private fun startOfTodayMs(): Long {
+        val tz = TimeZone.currentSystemDefault()
+        return Clock.System.now().toLocalDateTime(tz).date.atStartOfDayIn(tz).toEpochMilliseconds()
+    }
+
+    fun clear() = coroutineScope.cancel()
+
+    private companion object {
+        const val DAY_MS = 24 * 3_600_000L
+        const val SEVEN_DAYS_MS = 7 * DAY_MS
+        const val THIRTY_DAYS_MS = 30 * DAY_MS
     }
 }

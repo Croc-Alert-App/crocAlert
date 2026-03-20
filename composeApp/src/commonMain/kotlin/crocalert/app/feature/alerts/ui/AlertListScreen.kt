@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -17,19 +18,27 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -39,148 +48,300 @@ import crocalert.app.feature.alerts.data.MockAlertRepository
 import crocalert.app.feature.alerts.presentation.AlertFilter
 import crocalert.app.feature.alerts.presentation.AlertsUiState
 import crocalert.app.feature.alerts.presentation.AlertsViewModel
+import crocalert.app.feature.alerts.presentation.DateRange
+import crocalert.app.feature.alerts.presentation.SortDirection
+import crocalert.app.feature.alerts.ui.components.AlertDateRangePickerDialog
 import crocalert.app.feature.alerts.ui.components.AlertListItem
-import crocalert.app.feature.alerts.ui.components.EmptyState
 import crocalert.app.feature.alerts.ui.components.ErrorState
 import crocalert.app.feature.alerts.ui.components.LoadingState
 import crocalert.app.model.Alert
+import crocalert.app.model.AlertPriority
 import crocalert.app.theme.CrocAmber
 import crocalert.app.theme.CrocBlack
+import crocalert.app.theme.CrocBlue
+import crocalert.app.theme.CrocNeutralLight
 import crocalert.app.theme.CrocWhite
+import crocalert.app.ui.components.EmptyStateView
+import kotlinx.datetime.Instant
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 
-/**
- * Entry-point composable for the Alerts List feature.
- *
- * The [viewModel] parameter defaults to a [MockAlertRepository]-backed instance
- * so the screen works out-of-the-box in Phase 1. When Koin DI is wired up,
- * replace the default with: `viewModel: AlertsViewModel = koinInject()`
- */
+// ── Tab definition ────────────────────────────────────────────────────────────
+
+private enum class AlertTab(val label: String, val priorities: Set<AlertPriority>) {
+    PRE_ALERTS("Pre-Alertas", setOf(AlertPriority.MEDIUM)),
+    ALERTS("Alertas", setOf(AlertPriority.CRITICAL, AlertPriority.HIGH)),
+}
+
+private fun List<Alert>.forTab(tab: AlertTab): List<Alert> =
+    filter { it.priority in tab.priorities }
+
+// ── Screen ────────────────────────────────────────────────────────────────────
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AlertListScreen(
     viewModel: AlertsViewModel = remember { AlertsViewModel(MockAlertRepository()) },
 ) {
-    DisposableEffect(viewModel) {
-        onDispose { viewModel.clear() }
-    }
+    DisposableEffect(viewModel) { onDispose { viewModel.clear() } }
 
     val uiState by viewModel.uiState.collectAsState()
     val activeFilter by viewModel.activeFilter.collectAsState()
+    val sortDirection by viewModel.sortDirection.collectAsState()
+    val customRange by viewModel.customRange.collectAsState()
 
-    val unreadCount = (uiState as? AlertsUiState.Success)
-        ?.alerts?.count { !it.isRead } ?: 0
+    var activeTab by remember { mutableStateOf(AlertTab.PRE_ALERTS) }
+    var showDateRangePicker by remember { mutableStateOf(false) }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+    val successAlerts = (uiState as? AlertsUiState.Success)?.alerts
+    val unreadCount = successAlerts?.count { !it.isRead } ?: 0
+
+    Column(modifier = Modifier.fillMaxSize()) {
+        // ── Header ────────────────────────────────────────────────────────
+        Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 16.dp, bottom = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = "ALERTAS",
+                    style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.ExtraBold),
+                    color = CrocBlue,
+                    modifier = Modifier.weight(1f),
+                )
+                if (unreadCount > 0) {
+                    Box(
+                        modifier = Modifier
+                            .size(28.dp)
+                            .clip(CircleShape)
+                            .background(CrocAmber),
+                        contentAlignment = Alignment.Center,
+                    ) {
                         Text(
-                            text = "Alert Panel",
-                            style = MaterialTheme.typography.titleLarge,
+                            text = unreadCount.toString(),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = CrocBlack,
                             fontWeight = FontWeight.Bold,
                         )
-                        if (unreadCount > 0) {
-                            Spacer(Modifier.width(8.dp))
-                            Box(
-                                modifier = Modifier
-                                    .size(24.dp)
-                                    .clip(CircleShape)
-                                    .background(CrocAmber),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                Text(
-                                    text = unreadCount.toString(),
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = CrocBlack,
-                                    fontWeight = FontWeight.Bold,
-                                )
-                            }
-                        }
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = CrocWhite,
-                ),
-            )
-        },
-    ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues),
-        ) {
-            AlertFilterChips(
+                    Spacer(Modifier.width(8.dp))
+                }
+                ActionButton(text = sortDirection.label, onClick = viewModel::toggleSort)
+                Spacer(Modifier.width(6.dp))
+                ActionButton(text = "Actualizar", onClick = viewModel::refresh)
+            }
+
+            // ── Preset date filter chips ───────────────────────────────────
+            AlertPresetFilterChips(
                 activeFilter = activeFilter,
                 onFilterSelected = viewModel::setFilter,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                    .padding(bottom = 6.dp),
             )
 
-            when (val state = uiState) {
-                is AlertsUiState.Loading -> LoadingState(modifier = Modifier.fillMaxSize())
-                is AlertsUiState.Empty -> EmptyState(modifier = Modifier.fillMaxSize())
-                is AlertsUiState.Error -> ErrorState(
-                    message = state.message,
-                    onRetry = viewModel::retry,
-                    modifier = Modifier.fillMaxSize(),
+            // ── Custom date range bar ──────────────────────────────────────
+            CustomRangeBar(
+                isActive = activeFilter == AlertFilter.CUSTOM,
+                customRange = customRange,
+                onOpenPicker = { showDateRangePicker = true },
+                onClear = { viewModel.setFilter(AlertFilter.ALL) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 8.dp),
+            )
+        }
+
+        HorizontalDivider()
+
+        // ── Tabs ──────────────────────────────────────────────────────────
+        TabRow(selectedTabIndex = AlertTab.entries.indexOf(activeTab)) {
+            AlertTab.entries.forEach { tab ->
+                val count = successAlerts?.forTab(tab)?.size ?: 0
+                Tab(
+                    selected = tab == activeTab,
+                    onClick = { activeTab = tab },
+                    text = {
+                        Text(
+                            text = if (count > 0) "${tab.label} ($count)" else tab.label,
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                    },
                 )
-                is AlertsUiState.Success -> AlertList(
-                    alerts = state.alerts,
-                    modifier = Modifier.fillMaxSize(),
-                )
+            }
+        }
+
+        // ── Content ───────────────────────────────────────────────────────
+        when (val state = uiState) {
+            is AlertsUiState.Loading -> LoadingState(modifier = Modifier.fillMaxSize())
+            is AlertsUiState.Empty -> EmptyStateView(
+                icon = Icons.Outlined.Notifications,
+                title = "Sin alertas",
+                subtitle = state.message,
+            )
+            is AlertsUiState.Error -> ErrorState(
+                message = state.message,
+                onRetry = viewModel::retry,
+                modifier = Modifier.fillMaxSize(),
+            )
+            is AlertsUiState.Success -> {
+                val tabAlerts = state.alerts.forTab(activeTab)
+                if (tabAlerts.isEmpty()) {
+                    EmptyStateView(
+                        icon = Icons.Outlined.Notifications,
+                        title = "Sin ${activeTab.label.lowercase()}",
+                        subtitle = "No hay ${activeTab.label.lowercase()} para este período.",
+                    )
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        items(tabAlerts, key = { it.id }) { alert ->
+                            AlertListItem(alert = alert)
+                        }
+                        item { Spacer(Modifier.height(8.dp)) }
+                    }
+                }
+            }
+        }
+    }
+
+    // ── Date range picker dialog ───────────────────────────────────────────
+    if (showDateRangePicker) {
+        AlertDateRangePickerDialog(
+            initialRange = customRange,
+            onRangeSelected = { start, end ->
+                viewModel.setCustomRange(start, end)
+                showDateRangePicker = false
+            },
+            onDismiss = { showDateRangePicker = false },
+        )
+    }
+}
+
+// ── Sub-composables ───────────────────────────────────────────────────────────
+
+@Composable
+private fun ActionButton(text: String, onClick: () -> Unit) {
+    Button(
+        onClick = onClick,
+        shape = RoundedCornerShape(6.dp),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = CrocBlue,
+            contentColor = CrocWhite,
+        ),
+        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
+    ) {
+        Text(text = text, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold)
+    }
+}
+
+@Composable
+private fun AlertPresetFilterChips(
+    activeFilter: AlertFilter,
+    onFilterSelected: (AlertFilter) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val presets = remember { AlertFilter.entries.filter { it != AlertFilter.CUSTOM } }
+    Row(
+        modifier = modifier.horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        presets.forEach { filter ->
+            if (filter == activeFilter) {
+                Button(
+                    onClick = { onFilterSelected(filter) },
+                    shape = CircleShape,
+                    colors = ButtonDefaults.buttonColors(containerColor = CrocBlue),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                ) {
+                    Text(text = filter.label, style = MaterialTheme.typography.labelMedium, color = CrocWhite)
+                }
+            } else {
+                OutlinedButton(
+                    onClick = { onFilterSelected(filter) },
+                    shape = CircleShape,
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                ) {
+                    Text(
+                        text = filter.label,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                }
             }
         }
     }
 }
 
-/**
- * Scrollable row of [FilterChip]s that represent the available [AlertFilter] options.
- * Selecting a chip calls [onFilterSelected] so the ViewModel can update the list.
- */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun AlertFilterChips(
-    activeFilter: AlertFilter,
-    onFilterSelected: (AlertFilter) -> Unit,
+private fun CustomRangeBar(
+    isActive: Boolean,
+    customRange: DateRange?,
+    onOpenPicker: () -> Unit,
+    onClear: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Row(
-        modifier = modifier.horizontalScroll(rememberScrollState()),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        AlertFilter.entries.forEach { filter ->
-            FilterChip(
-                selected = filter == activeFilter,
-                onClick = { onFilterSelected(filter) },
-                label = { Text(filter.label) },
-                colors = FilterChipDefaults.filterChipColors(
-                    selectedContainerColor = MaterialTheme.colorScheme.primary,
-                    selectedLabelColor = CrocWhite,
-                ),
+    if (isActive && customRange != null) {
+        Surface(
+            onClick = onOpenPicker,
+            shape = RoundedCornerShape(8.dp),
+            color = CrocBlue,
+            modifier = modifier,
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 14.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = "📅  ${formatDateMs(customRange.startMs)} – ${formatDateMs(customRange.endMs)}",
+                    color = CrocWhite,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.weight(1f),
+                )
+                TextButton(
+                    onClick = onOpenPicker,
+                    colors = ButtonDefaults.textButtonColors(contentColor = CrocWhite),
+                    contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp),
+                ) {
+                    Text("Editar", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                }
+                TextButton(
+                    onClick = onClear,
+                    colors = ButtonDefaults.textButtonColors(contentColor = CrocWhite),
+                    contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp),
+                ) {
+                    Text("× Limpiar", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+    } else {
+        OutlinedButton(
+            onClick = onOpenPicker,
+            shape = RoundedCornerShape(8.dp),
+            modifier = modifier,
+            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
+        ) {
+            Text(
+                text = "📅  Rango de fechas personalizado",
+                style = MaterialTheme.typography.bodySmall,
+                color = CrocBlue,
             )
         }
     }
 }
 
-/**
- * Renders the sorted list of [Alert] items inside a [LazyColumn].
- * Each item is keyed by [Alert.id] for efficient recomposition.
- */
-@Composable
-private fun AlertList(
-    alerts: List<Alert>,
-    modifier: Modifier = Modifier,
-) {
-    LazyColumn(
-        modifier = modifier,
-        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        items(items = alerts, key = { it.id }) { alert ->
-            AlertListItem(alert = alert)
-        }
-    }
+private fun formatDateMs(epochMs: Long): String {
+    val date = Instant.fromEpochMilliseconds(epochMs)
+        .toLocalDateTime(TimeZone.currentSystemDefault()).date
+    val month = date.month.name.take(3).lowercase().replaceFirstChar { it.uppercase() }
+    return "$month ${date.dayOfMonth}"
 }
