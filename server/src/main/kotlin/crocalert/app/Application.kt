@@ -16,6 +16,7 @@ import io.ktor.server.application.*
 import io.ktor.server.engine.*
 import io.ktor.server.netty.*
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.server.plugins.statuspages.StatusPages
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
@@ -35,6 +36,7 @@ fun main() {
 fun Application.module(initFirebase: Boolean = true) {
     if (initFirebase) FirebaseInit.init()
     configureSerialization()
+    configureErrorHandling()
     configureAuth()
     configureRouting(
         alertService   = AlertService(),
@@ -43,17 +45,26 @@ fun Application.module(initFirebase: Boolean = true) {
     )
 }
 
-// API key guard via CROC_API_KEY env var. Blank = dev mode (no auth). GET / is always open.
-fun Application.configureAuth() {
-    val expectedKey = System.getenv("CROC_API_KEY").orEmpty()
-    if (expectedKey.isBlank()) return   // dev mode — skip
+fun Application.configureAuth(apiKey: String = System.getenv("CROC_API_KEY").orEmpty()) {
+    if (apiKey.isBlank()) return   // dev mode — skip
 
     intercept(ApplicationCallPipeline.Plugins) {
         if (call.request.path() == "/") return@intercept
         val provided = call.request.header("X-API-Key")
-        if (provided != expectedKey) {
+        if (provided != apiKey) {
             call.respond(HttpStatusCode.Unauthorized, "Invalid or missing X-API-Key header")
             finish()
+        }
+    }
+}
+
+fun Application.configureErrorHandling() {
+    install(StatusPages) {
+        exception<Throwable> { call, cause ->
+            call.respond(
+                HttpStatusCode.InternalServerError,
+                mapOf("error" to (cause.message ?: "Unexpected server error"))
+            )
         }
     }
 }
