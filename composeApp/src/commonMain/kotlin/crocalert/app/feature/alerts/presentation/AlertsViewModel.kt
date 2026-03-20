@@ -30,6 +30,7 @@ import kotlinx.datetime.toLocalDateTime
 class AlertsViewModel(
     private val repository: AlertRepository,
     private val coroutineScope: CoroutineScope = CoroutineScope(Dispatchers.Main + SupervisorJob()),
+    private val clock: Clock = Clock.System,
 ) {
     private val _uiState = MutableStateFlow<AlertsUiState>(AlertsUiState.Loading)
     val uiState: StateFlow<AlertsUiState> = _uiState.asStateFlow()
@@ -72,7 +73,7 @@ class AlertsViewModel(
     }
 
     private fun applyFilterAndSort() {
-        val now = Clock.System.now().toEpochMilliseconds()
+        val now = clock.now().toEpochMilliseconds()
 
         val filtered = when (_activeFilter.value) {
             AlertFilter.ALL -> rawAlerts
@@ -117,7 +118,7 @@ class AlertsViewModel(
 
     private fun startOfTodayMs(): Long {
         val tz = TimeZone.currentSystemDefault()
-        return Clock.System.now().toLocalDateTime(tz).date.atStartOfDayIn(tz).toEpochMilliseconds()
+        return clock.now().toLocalDateTime(tz).date.atStartOfDayIn(tz).toEpochMilliseconds()
     }
 
     fun clear() = coroutineScope.cancel()
