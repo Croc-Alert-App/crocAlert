@@ -2,6 +2,7 @@ package crocalert.app.ui.dashboard
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -42,7 +43,7 @@ class DashboardViewModel(
     }
 
     private fun loadData() {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.Default) {
             _uiState.value = try {
                 val data = DashboardUiState.Success(loadDashboard())
                 _syncStatus.value = SyncStatus.Synced

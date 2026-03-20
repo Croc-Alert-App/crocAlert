@@ -14,6 +14,11 @@ application {
     applicationDefaultJvmArgs = listOf("-Dio.ktor.development=$isDevelopment")
 }
 
+tasks.named<com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar>("shadowJar") {
+    archiveFileName.set("server-all.jar")
+    mergeServiceFiles()
+}
+
 dependencies {
     implementation(project(":shared")) // o projects.shared si tienes typesafe accessors bien configurado
     implementation("io.ktor:ktor-server-core:2.3.12")
