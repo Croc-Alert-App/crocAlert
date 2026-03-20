@@ -2,10 +2,13 @@ package crocalert.app.shared
 
 import crocalert.app.domain.repository.AlertRepository
 import crocalert.app.domain.repository.CameraRepository
+import crocalert.app.domain.repository.SiteRepository
 import crocalert.app.shared.data.remote.AlertRemoteDataSourceImpl
 import crocalert.app.shared.data.remote.CameraRemoteDataSourceImpl
+import crocalert.app.shared.data.remote.SiteRemoteDataSourceImpl
 import crocalert.app.shared.data.repository.AlertRepositoryImpl
 import crocalert.app.shared.data.repository.CameraRepositoryImpl
+import crocalert.app.shared.data.repository.SiteRepositoryImpl
 import crocalert.app.shared.network.ApiRoutes
 import crocalert.app.shared.network.HttpClientFactory
 
@@ -20,4 +23,9 @@ fun createAlertRepository(baseUrl: String = ApiRoutes.DEFAULT_BASE): AlertReposi
 fun createCameraRepository(baseUrl: String = ApiRoutes.DEFAULT_BASE): CameraRepository {
     val remote = CameraRemoteDataSourceImpl(sharedHttpClient, baseUrl)
     return CameraRepositoryImpl(remote)
+}
+
+fun createSiteRepository(baseUrl: String = ApiRoutes.DEFAULT_BASE): SiteRepository {
+    val remote = SiteRemoteDataSourceImpl(sharedHttpClient, baseUrl)
+    return SiteRepositoryImpl(remote)
 }
