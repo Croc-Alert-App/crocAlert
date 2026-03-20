@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.androidLibrary)
     alias(libs.plugins.kotlinSerialization)
+    alias(libs.plugins.kover)
 }
 
 kotlin {
@@ -58,6 +59,11 @@ kotlin {
             implementation(libs.kotlinxCoroutinesTest)
             implementation(libs.ktorClientMock)
         }
+
+        jvmTest.dependencies {
+            implementation(libs.kotlin.test)
+            implementation(libs.kotlinxCoroutinesTest)
+        }
     }
 }
 
@@ -72,5 +78,20 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
+    }
+}
+
+kover {
+    reports {
+        filters {
+            excludes {
+                packages("crocalert.app.shared.data.dto", "crocalert.app.shared.data.mapper")
+            }
+        }
+        verify {
+            rule("Minimum line coverage") {
+                bound { minValue = 70 }
+            }
+        }
     }
 }

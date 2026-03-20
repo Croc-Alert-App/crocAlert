@@ -30,6 +30,8 @@ androidxLifecycle = "2.8.0"
 
 # Tests
 junit = "4.13.2"
+turbine = "1.2.0"
+kover = "0.8.3"
 
 [libraries]
 # ---------- Android core ----------
@@ -93,6 +95,7 @@ junit = { module = "junit:junit", version.ref = "junit" }
 androidxTestExtJunit = "androidx.test.ext:junit:1.1.5"
 androidxEspressoCore = "androidx.test.espresso:espresso-core:3.5.1"
 ktorClientMock = { module = "io.ktor:ktor-client-mock", version.ref = "ktor" }
+turbine = { module = "app.cash.turbine:turbine", version.ref = "turbine" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }
@@ -104,3 +107,4 @@ kotlinMultiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref =
 composeMultiplatform = { id = "org.jetbrains.compose", version.ref = "composeMultiplatform" }
 composeCompiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 kotlinSerialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+kover = { id = "org.jetbrains.kotlinx.kover", version.ref = "kover" }

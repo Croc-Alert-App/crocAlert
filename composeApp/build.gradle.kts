@@ -5,6 +5,7 @@ plugins {
     alias(libs.plugins.androidLibrary)
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
+    alias(libs.plugins.kover)
 }
 
 kotlin {
@@ -63,6 +64,7 @@ kotlin {
         commonTest.dependencies {
             implementation(libs.kotlin.test)
             implementation(libs.kotlinxCoroutinesTest)
+            implementation(libs.turbine)
         }
 
         jvmMain.dependencies {
@@ -94,5 +96,25 @@ android {
 
 dependencies {
     debugImplementation(libs.composeUiTooling)
+}
+
+kover {
+    reports {
+        filters {
+            excludes {
+                packages(
+                    "crocalert.app.theme",
+                    "crocalert.app.ui.components",
+                    "crocalert.app.feature.alerts.data",
+                )
+                annotatedBy("androidx.compose.runtime.Composable")
+            }
+        }
+        verify {
+            rule("Minimum line coverage") {
+                bound { minValue = 70 }
+            }
+        }
+    }
 }
 
