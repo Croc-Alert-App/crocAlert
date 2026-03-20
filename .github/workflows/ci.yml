@@ -6,11 +6,16 @@ on:
   pull_request:
     branches: [ main, develop ]
 
-jobs:
-  test:
-    name: Run tests
-    runs-on: ubuntu-latest
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
+jobs:
+  # ── Shared KMP module (pure Kotlin, fast) ─────────────────────────────────
+  test-shared:
+    name: Shared Module Tests (KMP/JVM)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -34,17 +39,191 @@ jobs:
         run: chmod +x gradlew
 
       - name: Run shared module tests (JVM)
-        run: ./gradlew :shared:jvmTest --no-daemon
+        run: ./gradlew :shared:jvmTest --no-daemon --continue
 
-      - name: Run server tests
-        run: ./gradlew :server:test --no-daemon
-
-      - name: Upload test reports on failure
-        if: failure()
+      - name: Upload shared test report
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: test-reports
+          name: shared-test-report
+          path: shared/build/reports/tests/
+          retention-days: 14
+
+  # ── Server module (Ktor routes + business logic) ──────────────────────────
+  test-server:
+    name: Server Tests (Ktor)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: "17"
+          distribution: "temurin"
+
+      - name: Cache Gradle packages
+        uses: actions/cache@v4
+        with:
           path: |
-            shared/build/reports/tests/
-            server/build/reports/tests/
-          retention-days: 7
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle.kts', '**/libs.versions.toml', '**/gradle-wrapper.properties') }}
+          restore-keys: gradle-${{ runner.os }}-
+
+      - name: Grant Gradle wrapper execute permission
+        run: chmod +x gradlew
+
+      - name: Run server tests
+        run: ./gradlew :server:test --no-daemon --continue
+
+      - name: Upload server test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: server-test-report
+          path: server/build/reports/tests/
+          retention-days: 14
+
+  # ── ComposeApp — ViewModel + presentation layer (R-07 fix) ───────────────
+  test-compose:
+    name: ComposeApp Tests (KMP/JVM)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: "17"
+          distribution: "temurin"
+
+      - name: Cache Gradle packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle.kts', '**/libs.versions.toml', '**/gradle-wrapper.properties') }}
+          restore-keys: gradle-${{ runner.os }}-
+
+      - name: Grant Gradle wrapper execute permission
+        run: chmod +x gradlew
+
+      - name: Run composeApp tests (JVM target)
+        run: ./gradlew :composeApp:jvmTest --no-daemon --continue
+
+      - name: Upload composeApp test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: compose-test-report
+          path: composeApp/build/reports/tests/
+          retention-days: 14
+
+  # ── Android host-side unit tests (no emulator required) ──────────────────
+  test-android-unit:
+    name: Android Unit Tests (host)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: "17"
+          distribution: "temurin"
+
+      - name: Cache Gradle packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle.kts', '**/libs.versions.toml', '**/gradle-wrapper.properties') }}
+          restore-keys: gradle-${{ runner.os }}-
+
+      - name: Grant Gradle wrapper execute permission
+        run: chmod +x gradlew
+
+      - name: Run Android host unit tests
+        run: ./gradlew :androidApp:testDebugUnitTest --no-daemon --continue
+
+      - name: Upload Android unit test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-unit-test-report
+          path: androidApp/build/reports/tests/
+          retention-days: 14
+
+  # ── Coverage verification (Kover 70% gate) ───────────────────────────────
+  coverage-verify:
+    name: Coverage Gate (Kover ≥70%)
+    needs: [ test-shared, test-compose ]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: "17"
+          distribution: "temurin"
+
+      - name: Cache Gradle packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle.kts', '**/libs.versions.toml', '**/gradle-wrapper.properties') }}
+          restore-keys: gradle-${{ runner.os }}-
+
+      - name: Grant Gradle wrapper execute permission
+        run: chmod +x gradlew
+
+      - name: Verify coverage thresholds
+        run: ./gradlew :shared:koverVerify :composeApp:koverVerify --no-daemon
+
+      - name: Upload coverage reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kover-coverage-report
+          path: |
+            shared/build/reports/kover/
+            composeApp/build/reports/kover/
+          retention-days: 14
+
+  # ── Merge gate: all required jobs must pass before PR can merge ───────────
+  all-tests-pass:
+    name: All Tests Pass
+    needs: [ test-shared, test-server, test-compose, test-android-unit, coverage-verify ]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Check all jobs succeeded
+        run: |
+          if [[ "${{ needs.test-shared.result }}" != "success" || \
+                "${{ needs.test-server.result }}" != "success" || \
+                "${{ needs.test-compose.result }}" != "success" || \
+                "${{ needs.test-android-unit.result }}" != "success" || \
+                "${{ needs.coverage-verify.result }}" != "success" ]]; then
+            echo "One or more test jobs failed:"
+            echo "  shared:       ${{ needs.test-shared.result }}"
+            echo "  server:       ${{ needs.test-server.result }}"
+            echo "  compose:      ${{ needs.test-compose.result }}"
+            echo "  android-unit: ${{ needs.test-android-unit.result }}"
+            echo "  coverage:     ${{ needs.coverage-verify.result }}"
+            exit 1
+          fi
+          echo "All test jobs passed — safe to merge."
