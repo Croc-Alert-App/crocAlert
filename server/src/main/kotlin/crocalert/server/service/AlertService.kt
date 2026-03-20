@@ -71,6 +71,8 @@ class AlertService : AlertServicePort {
     private fun DocumentSnapshot.toDto() = AlertDto(
         id = id,
         captureId = getString("captureId") ?: "",
+        cameraId = getString("cameraId") ?: "",
+        aiConfidence = getDouble("aiConfidence")?.toFloat(),
         createdAt = getLong("createdAt") ?: 0L,
         status = getString("status") ?: "OPEN",
         priority = getString("priority") ?: "MEDIUM",
