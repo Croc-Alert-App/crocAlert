@@ -44,6 +44,7 @@ class AlertsRouteTest {
     ) = testApplication {
         application {
             configureSerialization()
+            configureErrorHandling()
             configureRouting(alertService = service)
         }
         block()
