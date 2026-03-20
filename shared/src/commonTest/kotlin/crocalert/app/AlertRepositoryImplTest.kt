@@ -36,6 +36,43 @@ class AlertRepositoryImplTest {
 
     private fun repo(fake: FakeAlertRemoteDataSource) = AlertRepositoryImpl(fake)
 
+    // ── lastRefreshError ──────────────────────────────────────────────────────
+
+    @Test
+    fun `lastRefreshError emits error message when post-mutation refresh fails`() = runTest {
+        val fake = FakeAlertRemoteDataSource(
+            getAlertsResult = ApiResult.Success(listOf(sampleDto)),
+            createResult = ApiResult.Success(IdResponse("new-id"))
+        )
+        val r = repo(fake)
+        r.observeAlerts().first()                       // populate cache
+
+        fake.getAlertsResult = ApiResult.Error("Server down")
+        r.createAlert(Alert(captureId = "cap-2", title = "New"))
+
+        assertEquals("Server down", r.lastRefreshError.value)
+    }
+
+    @Test
+    fun `lastRefreshError resets to null after a successful refresh`() = runTest {
+        val fake = FakeAlertRemoteDataSource(
+            getAlertsResult = ApiResult.Success(listOf(sampleDto)),
+            createResult = ApiResult.Success(IdResponse("new-id"))
+        )
+        val r = repo(fake)
+        r.observeAlerts().first()
+
+        // First mutation — refresh fails
+        fake.getAlertsResult = ApiResult.Error("Timeout")
+        r.createAlert(Alert(captureId = "cap-2", title = "Fail"))
+        assertEquals("Timeout", r.lastRefreshError.value)
+
+        // Second mutation — refresh succeeds
+        fake.getAlertsResult = ApiResult.Success(listOf(sampleDto))
+        r.createAlert(Alert(captureId = "cap-3", title = "Recover"))
+        assertNull(r.lastRefreshError.value)
+    }
+
     // ── observeAlerts ─────────────────────────────────────────────────────────
 
     @Test
