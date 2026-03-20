@@ -28,8 +28,8 @@ class AuthTest {
         override suspend fun getAll() = emptyList<AlertDto>()
         override suspend fun getById(id: String) = null
         override suspend fun create(dto: AlertDto) = "new-id"
-        override suspend fun update(id: String, dto: AlertDto) = true
-        override suspend fun delete(id: String) = true
+        override suspend fun update(id: String, dto: AlertDto) = false
+        override suspend fun delete(id: String) = false
     }
 
     // ── Helper builders ───────────────────────────────────────────────────────

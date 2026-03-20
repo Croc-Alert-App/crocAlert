@@ -1,6 +1,7 @@
 package crocalert.app
 
 import crocalert.app.shared.data.dto.AlertDto
+import crocalert.app.shared.data.dto.IdResponse
 import crocalert.app.shared.data.remote.AlertRemoteDataSourceImpl
 import crocalert.app.shared.network.ApiResult
 import crocalert.app.shared.network.ApiRoutes
@@ -113,7 +114,7 @@ class AlertRemoteDataSourceImplTest {
     fun `createAlert returns Success with id from response`() = runTest {
         val body = """{"id":"server-generated-id"}"""
         val result = impl(buildClient(status = HttpStatusCode.Created, body = body)).createAlert(sampleDto)
-        assertIs<ApiResult.Success<*>>(result)
+        assertIs<ApiResult.Success<IdResponse>>(result)
         assertEquals("server-generated-id", result.data.id)
     }
 
@@ -163,7 +164,7 @@ class AlertRemoteDataSourceImplTest {
         ApiRoutes.API_KEY = "secret-key"
         try {
             impl(client).getAlerts()
-            assertEquals("secret-key", captured.first()["X-Api-Key"]?.first())
+            assertEquals("secret-key", captured.first()["X-API-Key"]?.first())
         } finally {
             ApiRoutes.API_KEY = ""
         }
