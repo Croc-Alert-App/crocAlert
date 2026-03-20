@@ -4,17 +4,22 @@ import crocalert.server.FirebaseInit
 import crocalert.server.routes.alertRoutes
 import crocalert.server.routes.cameraRoutes
 import crocalert.server.routes.captureRoutes
+import crocalert.server.routes.siteRoutes
 import crocalert.server.service.AlertService
 import crocalert.server.service.AlertServicePort
 import crocalert.server.service.CameraService
 import crocalert.server.service.CameraServicePort
 import crocalert.server.service.CaptureService
 import crocalert.server.service.CaptureServicePort
+import crocalert.server.service.SiteService
+import crocalert.server.service.SiteServicePort
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.*
 import io.ktor.server.engine.*
 import io.ktor.server.netty.*
+import io.ktor.server.plugins.BadRequestException
+import io.ktor.server.plugins.UnsupportedMediaTypeException
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.server.plugins.statuspages.StatusPages
 import io.ktor.server.request.*
@@ -41,7 +46,8 @@ fun Application.module(initFirebase: Boolean = true) {
     configureRouting(
         alertService   = AlertService(),
         cameraService  = CameraService(),
-        captureService = CaptureService()
+        captureService = CaptureService(),
+        siteService    = SiteService()
     )
 }
 
@@ -60,6 +66,24 @@ fun Application.configureAuth(apiKey: String = System.getenv("CROC_API_KEY").orE
 
 fun Application.configureErrorHandling() {
     install(StatusPages) {
+        exception<BadRequestException> { call, cause ->
+            call.respond(
+                HttpStatusCode.BadRequest,
+                mapOf("error" to (cause.message ?: "Bad request"))
+            )
+        }
+        exception<UnsupportedMediaTypeException> { call, cause ->
+            call.respond(
+                HttpStatusCode.BadRequest,
+                mapOf("error" to (cause.message ?: "Bad request"))
+            )
+        }
+        status(HttpStatusCode.UnsupportedMediaType) { call, _ ->
+            call.respond(
+                HttpStatusCode.BadRequest,
+                mapOf("error" to "Invalid or missing request body")
+            )
+        }
         exception<Throwable> { call, cause ->
             call.respond(
                 HttpStatusCode.InternalServerError,
@@ -83,7 +107,8 @@ fun Application.configureSerialization() {
 fun Application.configureRouting(
     alertService: AlertServicePort = AlertService(),
     cameraService: CameraServicePort = CameraService(),
-    captureService: CaptureServicePort = CaptureService()
+    captureService: CaptureServicePort = CaptureService(),
+    siteService: SiteServicePort = SiteService()
 ) {
     routing {
         get("/") {
@@ -92,5 +117,6 @@ fun Application.configureRouting(
         alertRoutes(alertService)
         cameraRoutes(cameraService)
         captureRoutes(captureService)
+        siteRoutes(siteService)
     }
 }
