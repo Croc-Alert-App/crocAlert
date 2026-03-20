@@ -25,9 +25,8 @@ import kotlin.test.assertTrue
 /**
  * Unit tests for [AlertsViewModel].
  *
- * Each test creates an isolated [CoroutineScope] backed by the [runTest]
- * TestScheduler (via [StandardTestDispatcher]) so virtual time is fully
- * controlled and [advanceUntilIdle] drains all pending work.
+ * Uses [StandardTestDispatcher] so virtual time is fully controlled;
+ * [advanceUntilIdle] drains all pending coroutine work before asserting.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class AlertsViewModelTest {
