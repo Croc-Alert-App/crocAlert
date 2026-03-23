@@ -1,17 +1,17 @@
-import org.jetbrains.kotlin.gradle.dsl.JvmTarget
-
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.androidLibrary)
     alias(libs.plugins.kotlinSerialization)
     alias(libs.plugins.kover)
+    alias(libs.plugins.sqldelight)
 }
 
 kotlin {
     androidTarget {
-        publishLibraryVariants("release", "debug")
-        compilerOptions {
-            jvmTarget.set(JvmTarget.JVM_11)
+        compilations.all {
+            kotlinOptions {
+                jvmTarget = "11"
+            }
         }
     }
 
@@ -38,10 +38,15 @@ kotlin {
             implementation(libs.ktorClientContentNegotiation)
             implementation(libs.ktorSerializationKotlinxJson)
             implementation(libs.kotlinxSerializationJson)
+
+            implementation(libs.sqldelightCoroutines)
         }
 
         androidMain.dependencies {
             implementation(libs.ktorClientAndroid)
+            implementation(libs.sqldelightAndroid)
+            implementation(libs.workmanagerKtx)
+            implementation(libs.datastorePrefs)
         }
 
         jvmMain.dependencies {
@@ -58,6 +63,8 @@ kotlin {
             implementation(libs.kotlin.test)
             implementation(libs.kotlinxCoroutinesTest)
             implementation(libs.ktorClientMock)
+            implementation(libs.sqldelightSqlite)
+            implementation(libs.turbine)
         }
 
         jvmTest.dependencies {
@@ -78,6 +85,15 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
+    }
+}
+
+sqldelight {
+    databases {
+        create("CrocAlertDb") {
+            packageName.set("crocalert.app.db")
+            version = 3
+        }
     }
 }
 
