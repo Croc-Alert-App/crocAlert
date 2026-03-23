@@ -1,6 +1,7 @@
 package crocalert.app.shared.data.remote
 
 import crocalert.app.shared.data.dto.CameraDto
+import crocalert.app.shared.data.dto.CameraDailyStatsDto
 import crocalert.app.shared.data.dto.CaptureDto
 import crocalert.app.shared.network.ApiResult
 import crocalert.app.shared.network.ApiRoutes
@@ -33,6 +34,12 @@ class CameraRemoteDataSourceImpl(
 
     override suspend fun getCapturesByCamera(cameraId: String): ApiResult<List<CaptureDto>> =
         safeCall { client.get(ApiRoutes.capturesByCameraUrl(baseUrl, cameraId)) { addAuth() }.body() }
+
+    override suspend fun getDailyStats(cameraId: String, date: String): ApiResult<CameraDailyStatsDto> =
+        safeCall { client.get(ApiRoutes.dailyStatsUrl(baseUrl, cameraId, date)) { addAuth() }.body() }
+
+    override suspend fun getDailyStatsForAll(date: String): ApiResult<List<CameraDailyStatsDto>> =
+        safeCall { client.get(ApiRoutes.allDailyStatsUrl(baseUrl, date)) { addAuth() }.body() }
 
     override suspend fun createCamera(dto: CameraDto): ApiResult<String> = safeCall {
         client.post(camerasUrl) {

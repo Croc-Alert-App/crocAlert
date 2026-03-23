@@ -16,4 +16,6 @@ object ApiRoutes {
     fun camerasUrl(baseUrl: String) = "$baseUrl/cameras"
     fun capturesByCameraUrl(baseUrl: String, cameraId: String) = "$baseUrl/captures/by-camera/$cameraId"
     fun sitesUrl(baseUrl: String) = "$baseUrl/sites"
+    fun dailyStatsUrl(baseUrl: String, cameraId: String, date: String) = "$baseUrl/cameras/$cameraId/daily-stats/$date"
+    fun allDailyStatsUrl(baseUrl: String, date: String) = "$baseUrl/cameras/daily-stats/$date"
 }

@@ -22,3 +22,6 @@ SELECT MAX(synced_at) FROM camera_entity;
 
 deleteAll:
 DELETE FROM camera_entity;
+
+deleteOrphans:
+DELETE FROM camera_entity WHERE id NOT IN ?;

@@ -2,6 +2,7 @@ package crocalert.app.shared.data.repository
 
 import crocalert.app.domain.repository.CameraRepository
 import crocalert.app.model.Camera
+import crocalert.app.shared.data.dto.CameraDailyStatsDto
 import crocalert.app.shared.data.dto.CaptureDto
 import crocalert.app.shared.data.local.CameraLocalDataSource
 import crocalert.app.shared.data.mapper.toDto
@@ -41,6 +42,12 @@ class CameraRepositoryImpl(
 
     override suspend fun getCapturesByCamera(cameraId: String): ApiResult<List<CaptureDto>> =
         remote.getCapturesByCamera(cameraId)
+
+    override suspend fun getDailyStats(cameraId: String, date: String): ApiResult<CameraDailyStatsDto> =
+        remote.getDailyStats(cameraId, date)
+
+    override suspend fun getDailyStatsForAll(date: String): ApiResult<List<CameraDailyStatsDto>> =
+        remote.getDailyStatsForAll(date)
 
     override suspend fun createCamera(camera: Camera): String {
         val dto = camera.toDto()

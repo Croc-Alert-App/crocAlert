@@ -35,17 +35,25 @@ class SqlDelightCameraLocalDataSource(
     override suspend fun upsertAll(cameras: List<CameraDto>) = withContext(Dispatchers.IO) {
         val now = Clock.System.now().toEpochMilliseconds()
         queries.transaction {
-            cameras.forEach { dto ->
-                queries.upsertAll(
-                    id              = dto.id,
-                    name            = dto.name,
-                    is_active       = if (dto.isActive) 1L else 0L,
-                    site_id         = dto.siteId,
-                    expected_images = dto.expectedImages?.toLong(),
-                    created_at      = dto.createdAt,
-                    installed_at    = dto.installedAt,
-                    synced_at       = now,
-                )
+            if (cameras.isEmpty()) {
+                // Firebase returned an empty list — wipe local cache to match exactly.
+                queries.deleteAll()
+            } else {
+                // Remove only rows whose IDs are no longer in the remote response.
+                // Existing rows that are still present are untouched (just updated by upsert).
+                queries.deleteOrphans(cameras.map { it.id })
+                cameras.forEach { dto ->
+                    queries.upsertAll(
+                        id              = dto.id,
+                        name            = dto.name,
+                        is_active       = if (dto.isActive) 1L else 0L,
+                        site_id         = dto.siteId,
+                        expected_images = dto.expectedImages?.toLong(),
+                        created_at      = dto.createdAt,
+                        installed_at    = dto.installedAt,
+                        synced_at       = now,
+                    )
+                }
             }
         }
     }
