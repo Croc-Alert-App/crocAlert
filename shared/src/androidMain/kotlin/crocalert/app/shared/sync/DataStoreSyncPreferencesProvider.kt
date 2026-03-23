@@ -9,13 +9,13 @@ import kotlinx.coroutines.flow.map
 
 private val Context.dataStore by preferencesDataStore(name = "sync_preferences")
 
-class DataStoreSyncPreferencesProvider(private val context: Context) {
+class DataStoreSyncPreferencesProvider(private val context: Context) : SyncPreferencesProvider {
 
     private val alertsTtlKey  = intPreferencesKey("alerts_ttl_minutes")
     private val camerasTtlKey = intPreferencesKey("cameras_ttl_minutes")
     private val sitesTtlKey   = intPreferencesKey("sites_ttl_minutes")
 
-    val preferences: Flow<SyncPreferences> = context.dataStore.data.map { prefs ->
+    override val preferences: Flow<SyncPreferences> = context.dataStore.data.map { prefs ->
         SyncPreferences(
             alertsTtlMinutes  = prefs[alertsTtlKey]  ?: SyncPreferences().alertsTtlMinutes,
             camerasTtlMinutes = prefs[camerasTtlKey] ?: SyncPreferences().camerasTtlMinutes,
@@ -23,11 +23,11 @@ class DataStoreSyncPreferencesProvider(private val context: Context) {
         )
     }
 
-    suspend fun setAlertsTtl(minutes: Int) {
+    override suspend fun setAlertsTtl(minutes: Int) {
         context.dataStore.edit { it[alertsTtlKey] = minutes }
     }
 
-    suspend fun setCamerasTtl(minutes: Int) {
+    override suspend fun setCamerasTtl(minutes: Int) {
         context.dataStore.edit { it[camerasTtlKey] = minutes }
     }
 }

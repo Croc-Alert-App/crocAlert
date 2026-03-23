@@ -4,6 +4,8 @@ import crocalert.app.domain.repository.AlertRepository
 import crocalert.app.domain.repository.CameraRepository
 import crocalert.app.shared.data.local.CameraSettingsDataSource
 import crocalert.app.shared.data.local.InMemoryCameraSettingsDataSource
+import crocalert.app.shared.sync.InMemorySyncPreferencesProvider
+import crocalert.app.shared.sync.SyncPreferencesProvider
 
 object AppModule {
 
@@ -18,4 +20,7 @@ object AppModule {
 
     fun provideCameraSettings(): CameraSettingsDataSource =
         InMemoryCameraSettingsDataSource()
+
+    fun provideSyncPreferencesProvider(): SyncPreferencesProvider =
+        InMemorySyncPreferencesProvider()
 }

@@ -19,6 +19,7 @@ import crocalert.app.shared.data.repository.SiteRepositoryImpl
 import crocalert.app.shared.network.ApiRoutes
 import crocalert.app.shared.network.HttpClientFactory
 import crocalert.app.shared.sync.DataStoreSyncPreferencesProvider
+import crocalert.app.shared.sync.SyncPreferencesProvider
 import crocalert.app.shared.sync.WorkManagerSyncScheduler
 
 object AppModule {
@@ -74,7 +75,7 @@ object AppModule {
     fun provideAlertRepository(): AlertRepository  = alertRepo
     fun provideCameraRepository(): CameraRepository = cameraRepo
     fun provideCameraSettings(): CameraSettingsDataSource = cameraSettings
-    fun provideSyncPreferencesProvider(): DataStoreSyncPreferencesProvider = syncPrefsProvider
+    fun provideSyncPreferencesProvider(): SyncPreferencesProvider = syncPrefsProvider
 
     // Called by sync workers to force a full refresh regardless of TTL.
     suspend fun syncAlerts()  = alertRepo.forceSync()

@@ -3,15 +3,15 @@ package crocalert.app.ui.profile
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import crocalert.app.shared.AppModule
-import crocalert.app.shared.sync.DataStoreSyncPreferencesProvider
 import crocalert.app.shared.sync.SyncPreferences
+import crocalert.app.shared.sync.SyncPreferencesProvider
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 class ProfileViewModel(
-    private val syncPrefsProvider: DataStoreSyncPreferencesProvider =
+    private val syncPrefsProvider: SyncPreferencesProvider =
         AppModule.provideSyncPreferencesProvider(),
 ) : ViewModel() {
 
