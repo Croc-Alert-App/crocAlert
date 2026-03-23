@@ -83,7 +83,7 @@ class AlertsViewModel(
             AlertFilter.CUSTOM -> {
                 val range = _customRange.value
                 if (range == null) {
-                    _uiState.value = AlertsUiState.Empty("Tap 'Custom' to select a date range.")
+                    _uiState.value = AlertsUiState.Empty("Toca 'Personalizado' para seleccionar un rango de fechas.")
                     return
                 }
                 // Include the full end-day by extending the end timestamp to 23:59:59.999.
@@ -106,7 +106,7 @@ class AlertsViewModel(
             repository.observeAlerts()
                 .catch { error ->
                     _uiState.value = AlertsUiState.Error(
-                        error.message ?: "Failed to load alerts. Please try again."
+                        error.message ?: "Error al cargar las alertas. Por favor, intenta de nuevo."
                     )
                 }
                 .collect { alerts ->
