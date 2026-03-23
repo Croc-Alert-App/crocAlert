@@ -5,6 +5,7 @@ internal object CamerasMockData {
         CameraUiItem(
             id = "cam-12",
             name = "CAM-12 Delta",
+            isActive = true,
             status = CameraStatus.Alert,
             lastCapture = "hace 2 días",
             imagesSent = 0,
@@ -17,6 +18,7 @@ internal object CamerasMockData {
         CameraUiItem(
             id = "cam-04",
             name = "CAM-04 Curva del río",
+            isActive = true,
             status = CameraStatus.Attention,
             lastCapture = "22:55",
             imagesSent = 26,
@@ -29,6 +31,7 @@ internal object CamerasMockData {
         CameraUiItem(
             id = "cam-08",
             name = "CAM-08 Norte",
+            isActive = true,
             status = CameraStatus.Attention,
             lastCapture = "20:05",
             imagesSent = 25,
@@ -41,6 +44,7 @@ internal object CamerasMockData {
         CameraUiItem(
             id = "cam-01",
             name = "CAM-01 Bridge",
+            isActive = true,
             status = CameraStatus.Ok,
             lastCapture = "23:55",
             imagesSent = 35,
@@ -53,6 +57,7 @@ internal object CamerasMockData {
         CameraUiItem(
             id = "cam-03",
             name = "CAM-03 Eastern Gate",
+            isActive = true,
             status = CameraStatus.Ok,
             lastCapture = "23:45",
             imagesSent = 34,
@@ -65,6 +70,7 @@ internal object CamerasMockData {
         CameraUiItem(
             id = "cam-05",
             name = "CAM-05 North Trail",
+            isActive = true,
             status = CameraStatus.Ok,
             lastCapture = "23:30",
             imagesSent = 35,
@@ -77,6 +83,7 @@ internal object CamerasMockData {
         CameraUiItem(
             id = "cam-07",
             name = "CAM-07 Waterfall",
+            isActive = true,
             status = CameraStatus.Ok,
             lastCapture = "22:15",
             imagesSent = 33,
@@ -89,6 +96,7 @@ internal object CamerasMockData {
         CameraUiItem(
             id = "cam-09",
             name = "CAM-09 Riverside",
+            isActive = true,
             status = CameraStatus.Ok,
             lastCapture = "23:00",
             imagesSent = 35,

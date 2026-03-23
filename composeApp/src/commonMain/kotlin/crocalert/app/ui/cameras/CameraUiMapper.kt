@@ -10,7 +10,7 @@ private const val DAY_MILLIS = 86_400_000L
 
 fun Camera.toUiItem(
     captures: List<CaptureDto>,
-    expectedPerDay: Int = EXPECTED_CAPTURES_PER_DAY
+    expectedPerDay: Int = expectedImages ?: EXPECTED_CAPTURES_PER_DAY,
 ): CameraUiItem {
     val now = Clock.System.now().toEpochMilliseconds()
     val dayAgo = now - DAY_MILLIS
@@ -33,6 +33,7 @@ fun Camera.toUiItem(
     return CameraUiItem(
         id = id,
         name = name,
+        isActive = isActive,
         status = status,
         lastCapture = lastCapture?.captureTime?.toRelativeTime() ?: "—",
         imagesSent = sent,

@@ -13,19 +13,18 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.FilterList
 import androidx.compose.material.icons.outlined.Search
-import androidx.compose.material.icons.outlined.Sort
 import androidx.compose.material.icons.outlined.Videocam
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -35,6 +34,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -43,17 +46,36 @@ import crocalert.app.theme.CrocBlue
 import crocalert.app.theme.CrocNeutralLight
 import crocalert.app.theme.CrocWhite
 import crocalert.app.ui.cameras.components.CameraCard
+import crocalert.app.ui.cameras.components.CameraFormDialog
+import crocalert.app.ui.cameras.components.DeletedCameraCard
 import crocalert.app.ui.components.EmptyStateView
 
 @Composable
 fun CamerasScreen(viewModel: CamerasViewModel = viewModel { CamerasViewModel() }) {
     val historyCamera by viewModel.historyCamera.collectAsState()
+    val showCameraForm by viewModel.showCameraForm.collectAsState()
+    val cameraToEdit by viewModel.cameraToEdit.collectAsState()
+    val isSaving by viewModel.isSaving.collectAsState()
+    val saveError by viewModel.saveError.collectAsState()
+
+    // Dialog is shown over whichever sub-screen is active (list or history)
+    val camera = cameraToEdit
+    if (showCameraForm && camera != null) {
+        CameraFormDialog(
+            cameraToEdit = camera,
+            isSaving = isSaving,
+            error = saveError,
+            onSave = viewModel::saveCamera,
+            onDismiss = viewModel::dismissCameraForm,
+        )
+    }
 
     historyCamera?.let { camera ->
         CameraHistoryScreen(
             cameraId = camera.id,
             cameraName = camera.name,
             onBack = viewModel::closeHistory,
+            onEditClick = viewModel::openEditCamera,
         )
         return
     }
@@ -61,32 +83,46 @@ fun CamerasScreen(viewModel: CamerasViewModel = viewModel { CamerasViewModel() }
     val filteredCameras by viewModel.filteredCameras.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
     val selectedFilter by viewModel.selectedFilter.collectAsState()
+    val visibilityFilter by viewModel.visibilityFilter.collectAsState()
     val statusCounts by viewModel.statusCounts.collectAsState()
     val expandedCameraId by viewModel.expandedCameraId.collectAsState()
 
-    val hasActiveFilter = searchQuery.isNotBlank() || selectedFilter != CameraFilter.All
+    val hasActiveFilter = searchQuery.isNotBlank() ||
+        selectedFilter != CameraFilter.All ||
+        visibilityFilter != VisibilityFilter.Active
 
     Column(modifier = Modifier.fillMaxSize()) {
         // — Static header ——————————————————————————————————————————————————————
         Column(modifier = Modifier.padding(horizontal = 16.dp)) {
-            Text(
-                text = "CÁMARAS",
-                style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.ExtraBold),
-                color = CrocBlue,
-                modifier = Modifier.padding(top = 16.dp, bottom = 12.dp),
-            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 16.dp, bottom = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = "CÁMARAS",
+                    style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.ExtraBold),
+                    color = CrocBlue,
+                )
+            }
             CameraSearchBar(
                 query = searchQuery,
                 onQueryChange = viewModel::onSearchChange,
             )
             Spacer(Modifier.height(8.dp))
-            CameraSortFilterRow()
-            Spacer(Modifier.height(8.dp))
-            CameraStatusFilterRow(
-                selected = selectedFilter,
-                statusCounts = statusCounts,
-                onSelect = viewModel::onFilterSelect,
+            CameraVisibilityDropdown(
+                selected = visibilityFilter,
+                onSelect = viewModel::onVisibilityFilterSelect,
             )
+            if (visibilityFilter != VisibilityFilter.Deleted) {
+                Spacer(Modifier.height(8.dp))
+                CameraStatusFilterRow(
+                    selected = selectedFilter,
+                    statusCounts = statusCounts,
+                    onSelect = viewModel::onFilterSelect,
+                )
+            }
             Spacer(Modifier.height(12.dp))
         }
 
@@ -115,17 +151,26 @@ fun CamerasScreen(viewModel: CamerasViewModel = viewModel { CamerasViewModel() }
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 items(filteredCameras, key = { it.id }) { camera ->
-                    CameraCard(
-                        camera = camera,
-                        expanded = expandedCameraId == camera.id,
-                        onToggle = { viewModel.toggleExpand(camera.id) },
-                        onHistoryClick = { viewModel.openHistory(camera) },
-                    )
+                    if (!camera.isActive) {
+                        DeletedCameraCard(
+                            camera = camera,
+                            onActivateClick = { viewModel.activateCamera(camera.id) },
+                        )
+                    } else {
+                        CameraCard(
+                            camera = camera,
+                            expanded = expandedCameraId == camera.id,
+                            onToggle = { viewModel.toggleExpand(camera.id) },
+                            onHistoryClick = { viewModel.openHistory(camera) },
+                            onDeleteClick = { viewModel.deleteCamera(camera.id) },
+                        )
+                    }
                 }
                 item { Spacer(Modifier.height(8.dp)) }
             }
         }
     }
+
 }
 
 // — Private sub-composables ————————————————————————————————————————————————————
@@ -165,40 +210,34 @@ private fun CameraSearchBar(
 }
 
 @Composable
-private fun CameraSortFilterRow(modifier: Modifier = Modifier) {
-    Row(
-        modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
+private fun CameraVisibilityDropdown(
+    selected: VisibilityFilter,
+    onSelect: (VisibilityFilter) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    Box(modifier = modifier) {
         OutlinedButton(
-            onClick = {},
-            enabled = false,
+            onClick = { expanded = true },
             shape = RoundedCornerShape(8.dp),
             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
-            modifier = Modifier.weight(1f),
+            modifier = Modifier.fillMaxWidth(),
+            border = BorderStroke(1.dp, CrocNeutralLight),
         ) {
-            Icon(
-                imageVector = Icons.Outlined.Sort,
-                contentDescription = null,
-                modifier = Modifier.size(16.dp),
+            Text(
+                text = "Vista: ${selected.label}",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.weight(1f),
             )
-            Spacer(Modifier.width(4.dp))
-            Text(text = "Orden: Severidad", style = MaterialTheme.typography.labelMedium)
         }
-        OutlinedButton(
-            onClick = {},
-            enabled = false,
-            shape = RoundedCornerShape(8.dp),
-            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
-            modifier = Modifier.weight(1f),
-        ) {
-            Icon(
-                imageVector = Icons.Outlined.FilterList,
-                contentDescription = null,
-                modifier = Modifier.size(16.dp),
-            )
-            Spacer(Modifier.width(4.dp))
-            Text(text = "Filtrado", style = MaterialTheme.typography.labelMedium)
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            VisibilityFilter.entries.forEach { filter ->
+                DropdownMenuItem(
+                    text = { Text(filter.label) },
+                    onClick = { onSelect(filter); expanded = false },
+                )
+            }
         }
     }
 }
