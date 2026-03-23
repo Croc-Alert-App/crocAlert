@@ -3,13 +3,14 @@ package crocalert.app.ui.dashboard
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import crocalert.app.domain.repository.AlertRepository
+import crocalert.app.domain.repository.CameraRepository
 import crocalert.app.model.AlertPriority
 import crocalert.app.model.AlertStatus
-import crocalert.app.shared.createAlertRepository
+import crocalert.app.shared.AppModule
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 import kotlinx.datetime.TimeZone
@@ -17,7 +18,8 @@ import kotlinx.datetime.atStartOfDayIn
 import kotlinx.datetime.toLocalDateTime
 
 class DashboardViewModel(
-    private val alertRepository: AlertRepository = createAlertRepository(),
+    private val alertRepository: AlertRepository = AppModule.provideAlertRepository(),
+    private val cameraRepository: CameraRepository = AppModule.provideCameraRepository(),
     private val loadMetrics: suspend () -> DashboardData = { DashboardMockData.load() },
 ) : ViewModel() {
 
@@ -33,6 +35,8 @@ class DashboardViewModel(
     private val _selectedTab = MutableStateFlow(DashboardTab.Home)
     val selectedTab: StateFlow<DashboardTab> = _selectedTab.asStateFlow()
 
+    private var loadJob: Job? = null
+
     init {
         loadData()
     }
@@ -42,25 +46,37 @@ class DashboardViewModel(
     }
 
     fun retry() {
-        _uiState.value = DashboardUiState.Loading
         _syncStatus.value = SyncStatus.Syncing
+        viewModelScope.launch {
+            // Global on-demand refresh: full sync for both repos, then reload UI
+            alertRepository.refresh()
+            cameraRepository.refresh()
+        }
+        _uiState.value = DashboardUiState.Loading
         loadData()
     }
 
     private fun loadData() {
-        viewModelScope.launch {
-            _uiState.value = try {
-                val metrics = loadMetrics()
+        loadJob?.cancel()
+        loadJob = viewModelScope.launch {
+            val metrics = try {
+                loadMetrics()
+            } catch (e: Exception) {
+                _syncStatus.value = SyncStatus.Error
+                _uiState.value = DashboardUiState.Error(e.message ?: "Error desconocido")
+                return@launch
+            }
 
-                // Load today's alerts from the real repository
-                val tz = TimeZone.currentSystemDefault()
+            val tz = TimeZone.currentSystemDefault()
+
+            alertRepository.observeAlerts().collect { allAlerts ->
                 val todayStartMs = Clock.System.now()
                     .toLocalDateTime(tz)
                     .date
                     .atStartOfDayIn(tz)
                     .toEpochMilliseconds()
 
-                val todayAlerts = alertRepository.observeAlerts().first()
+                val todayAlerts = allAlerts
                     .filter { it.createdAt >= todayStartMs }
                     .sortedByDescending { it.createdAt }
 
@@ -84,10 +100,7 @@ class DashboardViewModel(
                 _syncStatus.value = SyncStatus.Synced
                 val now = Clock.System.now().toLocalDateTime(tz)
                 _lastSynced.value = "${now.hour.toString().padStart(2, '0')}:${now.minute.toString().padStart(2, '0')}"
-                DashboardUiState.Success(data)
-            } catch (e: Exception) {
-                _syncStatus.value = SyncStatus.Error
-                DashboardUiState.Error(e.message ?: "Error desconocido")
+                _uiState.value = DashboardUiState.Success(data)
             }
         }
     }

@@ -4,6 +4,11 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Refresh
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -19,7 +24,7 @@ import crocalert.app.ui.dashboard.SyncStatus
 fun SyncBanner(
     status: SyncStatus,
     lastUpdated: String,
-    onRetry: () -> Unit,
+    onRefresh: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val backgroundColor = when (status) {
@@ -38,7 +43,7 @@ fun SyncBanner(
         modifier = modifier
             .fillMaxWidth()
             .background(backgroundColor)
-            .padding(horizontal = 16.dp, vertical = 6.dp),
+            .padding(start = 16.dp, end = 4.dp, top = 2.dp, bottom = 2.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
@@ -48,13 +53,21 @@ fun SyncBanner(
             modifier = Modifier.weight(1f)
         )
         if (status == SyncStatus.Error) {
-            TextButton(onClick = onRetry) {
+            TextButton(onClick = onRefresh) {
                 Text(
                     text = "Reintentar",
                     style = MaterialTheme.typography.labelSmall,
                     color = CrocWhite
                 )
             }
+        }
+        IconButton(onClick = onRefresh, modifier = Modifier.size(32.dp)) {
+            Icon(
+                imageVector = Icons.Outlined.Refresh,
+                contentDescription = "Sincronizar ahora",
+                tint = CrocWhite,
+                modifier = Modifier.size(16.dp)
+            )
         }
     }
 }
