@@ -41,6 +41,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import crocalert.app.model.Camera
 import crocalert.app.theme.CrocBlue
+import crocalert.app.ui.cameras.DEFAULT_EXPECTED_PER_DAY
 import crocalert.app.theme.CrocNeutralDark
 import crocalert.app.theme.CrocWhite
 import kotlinx.datetime.Instant
@@ -50,7 +51,7 @@ import kotlinx.datetime.atStartOfDayIn
 import kotlinx.datetime.toLocalDateTime
 
 private const val MIN_EXPECTED = 1
-private const val MAX_EXPECTED = 96
+private const val MAX_EXPECTED = 48
 private val DATE_REGEX = Regex("""^\d{4}-\d{2}-\d{2}$""")
 
 // ── Date helpers ──────────────────────────────────────────────────────────────
@@ -89,7 +90,12 @@ fun CameraFormDialog(
     var name           by remember(cameraToEdit) { mutableStateOf(cameraToEdit.name) }
     var isActive       by remember(cameraToEdit) { mutableStateOf(cameraToEdit.isActive) }
     var siteId         by remember(cameraToEdit) { mutableStateOf(cameraToEdit.siteId ?: "") }
-    var expectedImages by remember(cameraToEdit) { mutableIntStateOf(cameraToEdit.expectedImages ?: 24) }
+    var expectedImages by remember(cameraToEdit) {
+        mutableIntStateOf(
+            (cameraToEdit.expectedImages?.takeIf { it > 0 } ?: DEFAULT_EXPECTED_PER_DAY)
+                .coerceIn(MIN_EXPECTED, MAX_EXPECTED)
+        )
+    }
     var installedAt    by remember(cameraToEdit) { mutableStateOf(cameraToEdit.installedAt?.toDateString() ?: "") }
 
     // ── Validation errors ─────────────────────────────────────────────────────

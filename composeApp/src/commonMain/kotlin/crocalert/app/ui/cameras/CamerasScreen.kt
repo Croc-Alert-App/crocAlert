@@ -13,12 +13,16 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.ArrowDownward
+import androidx.compose.material.icons.outlined.ArrowUpward
+import androidx.compose.material.icons.outlined.KeyboardArrowDown
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Videocam
 import androidx.compose.material3.Button
@@ -86,6 +90,7 @@ fun CamerasScreen(viewModel: CamerasViewModel = viewModel { CamerasViewModel() }
     val visibilityFilter by viewModel.visibilityFilter.collectAsState()
     val statusCounts by viewModel.statusCounts.collectAsState()
     val expandedCameraId by viewModel.expandedCameraId.collectAsState()
+    val sortDescending by viewModel.sortDescending.collectAsState()
 
     val hasActiveFilter = searchQuery.isNotBlank() ||
         selectedFilter != CameraFilter.All ||
@@ -111,10 +116,21 @@ fun CamerasScreen(viewModel: CamerasViewModel = viewModel { CamerasViewModel() }
                 onQueryChange = viewModel::onSearchChange,
             )
             Spacer(Modifier.height(8.dp))
-            CameraVisibilityDropdown(
-                selected = visibilityFilter,
-                onSelect = viewModel::onVisibilityFilterSelect,
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                CameraVisibilityDropdown(
+                    selected = visibilityFilter,
+                    onSelect = viewModel::onVisibilityFilterSelect,
+                    modifier = Modifier.weight(1f),
+                )
+                CameraSortButton(
+                    descending = sortDescending,
+                    onToggle = viewModel::toggleSort,
+                    modifier = Modifier.weight(1f),
+                )
+            }
             if (visibilityFilter != VisibilityFilter.Deleted) {
                 Spacer(Modifier.height(8.dp))
                 CameraStatusFilterRow(
@@ -225,10 +241,16 @@ private fun CameraVisibilityDropdown(
             border = BorderStroke(1.dp, CrocNeutralLight),
         ) {
             Text(
-                text = "Vista: ${selected.label}",
+                text = "${selected.label}",
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.weight(1f),
+            )
+            Icon(
+                imageVector = Icons.Outlined.KeyboardArrowDown,
+                contentDescription = null,
+                modifier = Modifier.size(16.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
@@ -239,6 +261,35 @@ private fun CameraVisibilityDropdown(
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun CameraSortButton(
+    descending: Boolean,
+    onToggle: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Button(
+        onClick = onToggle,
+        shape = RoundedCornerShape(8.dp),
+        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+        modifier = modifier.fillMaxWidth(),
+        colors = ButtonDefaults.buttonColors(containerColor = CrocBlue),
+    ) {
+        Text(
+            text = "Orden",
+            style = MaterialTheme.typography.labelMedium,
+            color = CrocWhite,
+        )
+        Spacer(Modifier.width(6.dp))
+        Icon(
+            imageVector = if (descending) Icons.Outlined.ArrowDownward
+                          else Icons.Outlined.ArrowUpward,
+            contentDescription = null,
+            modifier = Modifier.size(16.dp),
+            tint = CrocWhite,
+        )
     }
 }
 

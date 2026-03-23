@@ -3,8 +3,8 @@ package crocalert.app.ui.cameras
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import crocalert.app.domain.repository.CameraRepository
+import crocalert.app.model.Camera
 import crocalert.app.shared.AppModule
-import crocalert.app.shared.data.local.CameraSettingsDataSource
 import crocalert.app.shared.network.ApiResult
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -20,7 +20,6 @@ import kotlinx.datetime.plus
 import kotlinx.datetime.toLocalDateTime
 import kotlinx.datetime.todayIn
 
-private const val DEFAULT_EXPECTED_PER_DAY = 24
 private const val MIN_EXPECTED = 1
 private const val MAX_EXPECTED = 48
 
@@ -28,43 +27,57 @@ class CameraHistoryViewModel(
     private val cameraId: String,
     private val cameraName: String,
     private val repository: CameraRepository = AppModule.provideCameraRepository(),
-    private val cameraSettings: CameraSettingsDataSource = AppModule.provideCameraSettings(),
 ) : ViewModel() {
 
-    private val tz = TimeZone.currentSystemDefault()
-    private val today = Clock.System.todayIn(tz)
+    private val tz get() = TimeZone.currentSystemDefault()
+    private val today get() = Clock.System.todayIn(tz)
+    private var currentCamera: Camera? = null
 
     private val _uiState = MutableStateFlow(
         CameraHistoryUiState(
             cameraId = cameraId,
             cameraName = cameraName,
-            selectedDate = today,
+            selectedDate = today.minus(1, DateTimeUnit.DAY), // start on yesterday — always a complete day
             received = 0,
             missing = 0,
             expected = DEFAULT_EXPECTED_PER_DAY,
             expectedPerDay = DEFAULT_EXPECTED_PER_DAY,
             integrityFlags = 0,
             captureSlots = emptyList(),
-            canGoNext = false,
+            canGoNext = true, // can always navigate forward to today
             isLoading = true,
         )
     )
     val uiState: StateFlow<CameraHistoryUiState> = _uiState.asStateFlow()
 
     init {
-        // One-time init: load persisted preference, fall back to camera model, then default
+        // One-time init: load from camera model (single source of truth), then default
         viewModelScope.launch {
-            val stored      = cameraSettings.getExpectedPerDay(cameraId)
             val cameraModel = repository.observeCamera(cameraId).first()
-            val initial     = stored ?: cameraModel?.expectedImages ?: DEFAULT_EXPECTED_PER_DAY
+            currentCamera = cameraModel
+            val initial = (cameraModel?.expectedImages?.takeIf { it > 0 } ?: DEFAULT_EXPECTED_PER_DAY)
+                .coerceIn(MIN_EXPECTED, MAX_EXPECTED)
             _uiState.value = _uiState.value.copy(expectedPerDay = initial, expected = initial)
             loadCaptures()
         }
 
-        // Continuously observe camera for reactive name updates
+        // Continuously observe camera: keep name + expectedPerDay in sync with Firebase
         viewModelScope.launch {
             repository.observeCamera(cameraId).collect { camera ->
-                camera?.let { _uiState.value = _uiState.value.copy(cameraName = it.name) }
+                currentCamera = camera
+                camera?.let { c ->
+                    val newExpected = (c.expectedImages?.takeIf { it > 0 } ?: DEFAULT_EXPECTED_PER_DAY)
+                        .coerceIn(MIN_EXPECTED, MAX_EXPECTED)
+                    val current = _uiState.value
+                    _uiState.value = current.copy(cameraName = c.name)
+                    if (newExpected != current.expectedPerDay) {
+                        _uiState.value = _uiState.value.copy(
+                            expectedPerDay = newExpected,
+                            isLoading = true,
+                        )
+                        loadCaptures()
+                    }
+                }
             }
         }
     }
@@ -95,7 +108,8 @@ class CameraHistoryViewModel(
         val clamped = value.coerceIn(MIN_EXPECTED, MAX_EXPECTED)
         _uiState.value = _uiState.value.copy(expectedPerDay = clamped, isLoading = true)
         viewModelScope.launch {
-            cameraSettings.setExpectedPerDay(cameraId, clamped)
+            // Persist back to the camera model (Firebase) — single source of truth shared with edit form
+            currentCamera?.let { repository.updateCamera(it.copy(expectedImages = clamped)) }
             loadCaptures()
         }
     }
@@ -103,12 +117,14 @@ class CameraHistoryViewModel(
     private suspend fun loadCaptures() {
         val state = _uiState.value
         val date = state.selectedDate
+        val dateString = date.toString()           // "YYYY-MM-DD" — matches server route param
         val expectedPerDay = state.expectedPerDay
-        val dayMs = 24 * 60 * 60 * 1000L
+        val currentToday = today
         val startMs = date.atStartOfDayIn(tz).toEpochMilliseconds()
-        val endMs = startMs + dayMs
-        val nowMs = Clock.System.now().toEpochMilliseconds()
-        val isToday = date == today
+        val endMs   = date.plus(1, DateTimeUnit.DAY).atStartOfDayIn(tz).toEpochMilliseconds()
+        val dayMs   = endMs - startMs
+        val nowMs   = Clock.System.now().toEpochMilliseconds()
+        val isToday = date == currentToday
 
         // Current slot index within today (0-based)
         val currentSlot = if (isToday)
@@ -116,58 +132,61 @@ class CameraHistoryViewModel(
                 .coerceIn(0, expectedPerDay - 1)
         else expectedPerDay
 
-        when (val result = repository.getCapturesByCamera(cameraId)) {
-            is ApiResult.Success -> {
-                val capturesForDate = result.data.filter { capture ->
-                    val t = capture.captureTime ?: 0L
-                    t >= startMs && t < endMs
-                }
+        // Fetch server-authoritative daily stats AND per-capture data in parallel
+        val statsResult  = repository.getDailyStats(cameraId, dateString)
+        val captureResult = repository.getCapturesByCamera(cameraId)
 
-                // Assign each capture to a slot index based on its position in the day
-                val bySlot = capturesForDate.groupBy { capture ->
-                    val t = (capture.captureTime ?: startMs).coerceAtLeast(startMs)
-                    (((t - startMs) * expectedPerDay) / dayMs).toInt()
-                        .coerceIn(0, expectedPerDay - 1)
-                }
-
-                val slotDurationHours = 24.0 / expectedPerDay
-                val slots = (0 until expectedPerDay).map { slotIndex ->
-                    val slotStartHour = (slotIndex * slotDurationHours).toInt()
-                    val captures = bySlot[slotIndex]
-                    val slotState = when {
-                        captures != null && captures.any { it.driveUrl.isNotBlank() } ->
-                            CaptureSlotState.Received
-                        captures != null ->
-                            CaptureSlotState.IntegrityFlag
-                        isToday && slotIndex > currentSlot ->
-                            CaptureSlotState.Expected
-                        else ->
-                            CaptureSlotState.Missing
-                    }
-                    CaptureSlot(hour = slotStartHour, state = slotState)
-                }
-
-                val received = slots.count { it.state in setOf(CaptureSlotState.Received, CaptureSlotState.IntegrityFlag) }
-                val missing = slots.count { it.state == CaptureSlotState.Missing }
-                val integrityFlags = slots.count { it.state == CaptureSlotState.IntegrityFlag }
-
-                _uiState.value = _uiState.value.copy(
-                    received = received,
-                    missing = missing,
-                    expected = expectedPerDay,
-                    integrityFlags = integrityFlags,
-                    captureSlots = slots,
-                    isLoading = false,
-                    error = null,
-                )
-            }
-            is ApiResult.Error -> {
-                _uiState.value = _uiState.value.copy(
-                    isLoading = false,
-                    error = "Error al cargar historial",
-                )
-            }
+        if (captureResult is ApiResult.Error && statsResult is ApiResult.Error) {
+            _uiState.value = _uiState.value.copy(
+                isLoading = false,
+                error = "Error al cargar historial",
+            )
+            return
         }
+
+        // Build the slot grid from individual captures (capture-level detail)
+        val captures = (captureResult as? ApiResult.Success)?.data ?: emptyList()
+        val capturesForDate = captures.filter { capture ->
+            val t = capture.captureTime ?: 0L
+            t >= startMs && t < endMs
+        }
+        val bySlot = capturesForDate.groupBy { capture ->
+            val t = (capture.captureTime ?: startMs).coerceAtLeast(startMs)
+            (((t - startMs) * expectedPerDay) / dayMs).toInt()
+                .coerceIn(0, expectedPerDay - 1)
+        }
+        val slotDurationHours = 24.0 / expectedPerDay
+        val slots = (0 until expectedPerDay).map { slotIndex ->
+            val slotStartHour = (slotIndex * slotDurationHours).toInt()
+            val slotCaptures = bySlot[slotIndex]
+            val slotState = when {
+                slotCaptures != null && slotCaptures.any { it.driveUrl.isNotBlank() } ->
+                    CaptureSlotState.Received
+                slotCaptures != null ->
+                    CaptureSlotState.IntegrityFlag
+                isToday && slotIndex > currentSlot ->
+                    CaptureSlotState.Expected
+                else ->
+                    CaptureSlotState.Missing
+            }
+            CaptureSlot(hour = slotStartHour, state = slotState)
+        }
+
+        // Prefer server stats for the header counts (authoritative); fall back to slot-derived counts
+        val serverStats = (statsResult as? ApiResult.Success)?.data
+        val received      = serverStats?.receivedImages  ?: slots.count { it.state in setOf(CaptureSlotState.Received, CaptureSlotState.IntegrityFlag) }
+        val missing       = serverStats?.missingImages   ?: slots.count { it.state == CaptureSlotState.Missing }
+        val integrityFlags = slots.count { it.state == CaptureSlotState.IntegrityFlag }
+
+        _uiState.value = _uiState.value.copy(
+            received = received,
+            missing = missing,
+            expected = expectedPerDay,
+            integrityFlags = integrityFlags,
+            captureSlots = slots,
+            isLoading = false,
+            error = null,
+        )
     }
 
 }

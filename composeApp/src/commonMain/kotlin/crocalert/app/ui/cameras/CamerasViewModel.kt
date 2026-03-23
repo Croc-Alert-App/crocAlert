@@ -5,8 +5,7 @@ import androidx.lifecycle.viewModelScope
 import crocalert.app.domain.repository.CameraRepository
 import crocalert.app.model.Camera
 import crocalert.app.shared.AppModule
-import crocalert.app.shared.data.dto.CaptureDto
-import crocalert.app.shared.data.local.CameraSettingsDataSource
+import crocalert.app.shared.data.dto.CameraDailyStatsDto
 import crocalert.app.shared.network.ApiResult
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -16,19 +15,18 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-
-private const val DEFAULT_EXPECTED_PER_DAY = 24
+import kotlinx.datetime.Clock
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.todayIn
 
 class CamerasViewModel(
     private val cameraRepository: CameraRepository = AppModule.provideCameraRepository(),
-    private val cameraSettings: CameraSettingsDataSource = AppModule.provideCameraSettings(),
-    initialCameras: List<CameraUiItem> = emptyList()
+    initialCameras: List<CameraUiItem> = emptyList(),
 ) : ViewModel() {
 
     // Raw data cache so we can rebuild cards without a network call
     private var rawCameras: List<Camera> = emptyList()
-    private val rawCaptures: MutableMap<String, List<CaptureDto>> = mutableMapOf()
-    private val rawExpected: MutableMap<String, Int> = mutableMapOf()
+    private val rawDailyStats: MutableMap<String, CameraDailyStatsDto> = mutableMapOf()
 
     private val _cameras = MutableStateFlow<List<CameraUiItem>>(initialCameras)
 
@@ -46,6 +44,9 @@ class CamerasViewModel(
 
     private val _visibilityFilter = MutableStateFlow(VisibilityFilter.Active)
     val visibilityFilter: StateFlow<VisibilityFilter> = _visibilityFilter.asStateFlow()
+
+    private val _sortDescending = MutableStateFlow(false)
+    val sortDescending: StateFlow<Boolean> = _sortDescending.asStateFlow()
 
     private val _expandedCameraId = MutableStateFlow<String?>(null)
     val expandedCameraId: StateFlow<String?> = _expandedCameraId.asStateFlow()
@@ -139,8 +140,8 @@ class CamerasViewModel(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
 
     val filteredCameras: StateFlow<List<CameraUiItem>> = combine(
-        _cameras, _searchQuery, _selectedFilter, _visibilityFilter
-    ) { cameras, query, filter, visibility ->
+        _cameras, _searchQuery, _selectedFilter, _visibilityFilter, _sortDescending
+    ) { cameras, query, filter, visibility, descending ->
         cameras
             .filter { camera ->
                 when (visibility) {
@@ -157,12 +158,16 @@ class CamerasViewModel(
                     camera.name.contains(query, ignoreCase = true) ||
                     camera.id.contains(query, ignoreCase = true)
             }
-            .sortedBy { it.status.severity }
+            .let { list ->
+                if (descending) list.sortedByDescending { it.name }
+                else list.sortedBy { it.name }
+            }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     fun onSearchChange(query: String) { _searchQuery.value = query }
     fun onFilterSelect(filter: CameraFilter) { _selectedFilter.value = filter }
     fun onVisibilityFilterSelect(filter: VisibilityFilter) { _visibilityFilter.value = filter }
+    fun toggleSort() { _sortDescending.value = !_sortDescending.value }
 
     fun activateCamera(cameraId: String) {
         viewModelScope.launch {
@@ -194,21 +199,52 @@ class CamerasViewModel(
 
     private fun rebuildCameras() {
         _cameras.value = rawCameras.map { camera ->
-            camera.toUiItem(
-                captures = rawCaptures[camera.id] ?: emptyList(),
-                // User DataStore override → camera model default → hardcoded default
-                expectedPerDay = rawExpected[camera.id]
-                    ?: camera.expectedImages
-                    ?: DEFAULT_EXPECTED_PER_DAY,
-            )
-        }
+            val stats = rawDailyStats[camera.id]
+            if (stats != null) {
+                camera.toUiItem(stats)
+            } else {
+                // Fallback when daily-stats not yet loaded
+                camera.toUiItem(
+                    captures = emptyList(),
+                    expectedPerDay = camera.expectedImages?.takeIf { it > 0 } ?: DEFAULT_EXPECTED_PER_DAY,
+                )
+            }
+        } + DEMO_CAMERAS
+    }
+
+    companion object {
+        // TODO: remove after demo — hardcoded cameras to showcase sort + status variety
+        private val DEMO_CAMERAS = listOf(
+            CameraUiItem(
+                id             = "demo-bien",
+                name           = "CAM-DEMO-A",
+                isActive       = true,
+                status         = CameraStatus.Ok,
+                lastCapture    = "Hace 15 min",
+                imagesSent     = 22,
+                imagesExpected = 24,
+                captureCount   = 22,
+                captureExpected= 24,
+                missingCaptures= 2,
+                integrityFlags = 0,
+            ),
+            CameraUiItem(
+                id             = "demo-precaucion",
+                name           = "CAM-DEMO-B",
+                isActive       = true,
+                status         = CameraStatus.Attention,
+                lastCapture    = "Hace 2 h",
+                imagesSent     = 16,
+                imagesExpected = 24,
+                captureCount   = 16,
+                captureExpected= 24,
+                missingCaptures= 8,
+                integrityFlags = 0,
+            ),
+        )
     }
 
     private suspend fun reloadExpectedAndRebuild() {
-        for (camera in rawCameras) {
-            val stored = cameraSettings.getExpectedPerDay(camera.id)
-            if (stored != null) rawExpected[camera.id] = stored else rawExpected.remove(camera.id)
-        }
         rebuildCameras()
     }
 
@@ -216,21 +252,24 @@ class CamerasViewModel(
         _isLoading.value = true
         _error.value = null
         try {
+            val today = Clock.System.todayIn(TimeZone.currentSystemDefault()).toString()
             cameraRepository.observeCameras().collect { cameras ->
                 rawCameras = cameras
-                for (camera in rawCameras) {
-                    rawCaptures[camera.id] = when (val res = cameraRepository.getCapturesByCamera(camera.id)) {
-                        is ApiResult.Success -> res.data
-                        is ApiResult.Error   -> emptyList()
+                // Single request for all cameras' daily stats instead of N per-camera calls
+                when (val statsResult = cameraRepository.getDailyStatsForAll(today)) {
+                    is ApiResult.Success -> {
+                        rawDailyStats.clear()
+                        statsResult.data.forEach { rawDailyStats[it.cameraId] = it }
                     }
-                    val stored = cameraSettings.getExpectedPerDay(camera.id)
-                    if (stored != null) rawExpected[camera.id] = stored else rawExpected.remove(camera.id)
+                    is ApiResult.Error -> {
+                        _error.value = "Error al obtener estadísticas diarias"
+                    }
                 }
                 rebuildCameras()
                 _isLoading.value = false
             }
         } catch (e: Exception) {
-            _error.value = e.message ?: "Failed to load cameras"
+            _error.value = e.message ?: "Error al cargar las cámaras"
             _isLoading.value = false
         }
     }
