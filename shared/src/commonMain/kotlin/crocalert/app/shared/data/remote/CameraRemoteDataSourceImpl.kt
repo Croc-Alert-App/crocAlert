@@ -10,6 +10,11 @@ import io.ktor.client.call.body
 import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.get
 import io.ktor.client.request.header
+import io.ktor.client.request.post
+import io.ktor.client.request.put
+import io.ktor.client.request.setBody
+import io.ktor.http.ContentType
+import io.ktor.http.contentType
 
 class CameraRemoteDataSourceImpl(
     private val client: HttpClient,
@@ -28,4 +33,21 @@ class CameraRemoteDataSourceImpl(
 
     override suspend fun getCapturesByCamera(cameraId: String): ApiResult<List<CaptureDto>> =
         safeCall { client.get(ApiRoutes.capturesByCameraUrl(baseUrl, cameraId)) { addAuth() }.body() }
+
+    override suspend fun createCamera(dto: CameraDto): ApiResult<String> = safeCall {
+        client.post(camerasUrl) {
+            addAuth()
+            contentType(ContentType.Application.Json)
+            setBody(dto)
+        }.body<Map<String, String>>()["id"] ?: ""
+    }
+
+    override suspend fun updateCamera(id: String, dto: CameraDto): ApiResult<Unit> = safeCall {
+        client.put("$camerasUrl/$id") {
+            addAuth()
+            contentType(ContentType.Application.Json)
+            setBody(dto)
+        }
+        Unit
+    }
 }
