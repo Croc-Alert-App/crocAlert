@@ -2,6 +2,8 @@ package crocalert.app.shared
 
 import crocalert.app.domain.repository.AlertRepository
 import crocalert.app.domain.repository.CameraRepository
+import crocalert.app.shared.data.local.CameraSettingsDataSource
+import crocalert.app.shared.data.local.InMemoryCameraSettingsDataSource
 
 object AppModule {
 
@@ -13,4 +15,7 @@ object AppModule {
 
     fun provideCameraRepository(): CameraRepository =
         createCameraRepository(baseUrl = BASE_URL)
+
+    fun provideCameraSettings(): CameraSettingsDataSource =
+        InMemoryCameraSettingsDataSource()
 }
