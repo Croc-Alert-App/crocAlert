@@ -5,12 +5,13 @@ import crocalert.app.shared.data.dto.CameraDto
 import crocalert.server.FirebaseInit
 import java.util.UUID
 import com.google.cloud.Timestamp
+import crocalert.app.shared.data.dto.CameraDailyStatsDto
 
 class CameraService : CameraServicePort {
 
     private val db by lazy { FirebaseInit.firestore() }
     private val col by lazy { db.collection("camera") }
-
+    private val imagesPerDayCol by lazy { db.collection("images_per_day") }
     private fun DocumentSnapshot.toCameraDto(): CameraDto {
 
         val created = getTimestamp("createdAt")?.toDate()?.time
@@ -115,5 +116,69 @@ class CameraService : CameraServicePort {
         ref.delete().get()
 
         return true
+    }
+     override suspend fun getDailyStats(cameraId: String, date: String): CameraDailyStatsDto? {
+        val cameraDoc = col.document(cameraId).get().get()
+        if (!cameraDoc.exists()) return null
+
+        val isActive = cameraDoc.getBoolean("isActive") ?: true
+        val installedAt = cameraDoc.getTimestamp("installedAt")?.toDate()?.time
+        val expectedImages =
+            cameraDoc.getLong("expectedImages")?.toInt()
+                ?: cameraDoc.getLong("excpectedImages")?.toInt()
+                ?: 0
+
+        val dayDoc = imagesPerDayCol.document(date).get().get()
+
+        val receivedImages = if (dayDoc.exists()) {
+            val imagesMap = dayDoc.get("imagesPerDay") as? Map<*, *>
+            (imagesMap?.get(cameraId) as? Number)?.toInt() ?: 0
+        } else {
+            0
+        }
+
+        val missingImages = (expectedImages - receivedImages).coerceAtLeast(0)
+
+        return CameraDailyStatsDto(
+            cameraId = cameraId,
+            date = date,
+            expectedImages = expectedImages,
+            receivedImages = receivedImages,
+            missingImages = missingImages,
+            isActive = isActive,
+            installedAt = installedAt
+        )
+    }
+
+     override suspend fun getDailyStatsForAll(date: String): List<CameraDailyStatsDto> {
+        val camerasSnap = col.get().get()
+        val dayDoc = imagesPerDayCol.document(date).get().get()
+
+        val imagesMap = if (dayDoc.exists()) {
+            dayDoc.get("imagesPerDay") as? Map<*, *> ?: emptyMap<Any, Any>()
+        } else {
+            emptyMap<Any, Any>()
+        }
+
+        return camerasSnap.documents.map { cameraDoc ->
+            val cameraId = cameraDoc.id
+            val expectedImages =
+                cameraDoc.getLong("expectedImages")?.toInt()
+                    ?: cameraDoc.getLong("excpectedImages")?.toInt()
+                    ?: 0
+
+            val receivedImages = (imagesMap[cameraId] as? Number)?.toInt() ?: 0
+            val missingImages = (expectedImages - receivedImages).coerceAtLeast(0)
+
+            CameraDailyStatsDto(
+                cameraId = cameraId,
+                date = date,
+                expectedImages = expectedImages,
+                receivedImages = receivedImages,
+                missingImages = missingImages,
+                isActive = cameraDoc.getBoolean("isActive") ?: true,
+                installedAt = cameraDoc.getTimestamp("installedAt")?.toDate()?.time
+            )
+        }
     }
 }
