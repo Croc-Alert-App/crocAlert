@@ -37,6 +37,7 @@ class AlertsViewModelStateTransitionTest {
         override suspend fun updateAlert(alert: Alert) {}
         override suspend fun deleteAlert(alertId: String) {}
         override val lastRefreshError: Flow<String?> = flowOf(null)
+        override suspend fun refresh() {}
     }
 
     private fun errorRepo(message: String): AlertRepository = object : AlertRepository {
@@ -46,6 +47,7 @@ class AlertsViewModelStateTransitionTest {
         override suspend fun updateAlert(alert: Alert) {}
         override suspend fun deleteAlert(alertId: String) {}
         override val lastRefreshError: Flow<String?> = flowOf(null)
+        override suspend fun refresh() {}
     }
 
     private fun alert(id: String) = Alert(

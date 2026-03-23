@@ -1,11 +1,18 @@
 package crocalert.app
 
+import crocalert.app.domain.repository.CameraRepository
+import crocalert.app.model.Camera
+import crocalert.app.shared.data.dto.CameraDailyStatsDto
+import crocalert.app.shared.data.dto.CaptureDto
+import crocalert.app.shared.network.ApiResult
 import crocalert.app.ui.cameras.CameraFilter
 import crocalert.app.ui.cameras.CameraStatus
 import crocalert.app.ui.cameras.CameraUiItem
 import crocalert.app.ui.cameras.CamerasViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -27,6 +34,18 @@ class CamerasViewModelTest {
 
     private val testDispatcher = UnconfinedTestDispatcher()
 
+    private val fakeCameraRepo = object : CameraRepository {
+        override fun observeCameras(siteId: String?): Flow<List<Camera>> = flowOf(emptyList())
+        override fun observeCamera(cameraId: String): Flow<Camera?> = flowOf(null)
+        override suspend fun getCapturesByCamera(cameraId: String): ApiResult<List<CaptureDto>> = ApiResult.Success(emptyList())
+        override suspend fun getDailyStats(cameraId: String, date: String): ApiResult<CameraDailyStatsDto> = ApiResult.Error("not implemented", 501)
+        override suspend fun getDailyStatsForAll(date: String): ApiResult<List<CameraDailyStatsDto>> = ApiResult.Success(emptyList())
+        override suspend fun createCamera(camera: Camera): String = ""
+        override suspend fun updateCamera(camera: Camera) {}
+        override suspend fun deleteCamera(cameraId: String) {}
+        override suspend fun refresh() {}
+    }
+
     // Three cameras: one per status, distinct names and IDs for search tests.
     private val alertCam     = camera("A", "Cam Alpha",   CameraStatus.Alert)
     private val okCam        = camera("B", "Cam Beta",    CameraStatus.Ok)
@@ -43,7 +62,7 @@ class CamerasViewModelTest {
         Dispatchers.resetMain()
     }
 
-    private fun vm() = CamerasViewModel(initialCameras = allCameras)
+    private fun vm() = CamerasViewModel(cameraRepository = fakeCameraRepo, initialCameras = allCameras)
 
     // ── Initial state ─────────────────────────────────────────────────────────
 
@@ -282,6 +301,7 @@ class CamerasViewModelTest {
     private fun camera(id: String, name: String, status: CameraStatus) = CameraUiItem(
         id = id,
         name = name,
+        isActive = true,
         status = status,
         lastCapture = "1h ago",
         imagesSent = 10,

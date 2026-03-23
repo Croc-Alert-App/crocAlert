@@ -33,6 +33,7 @@ class AlertsViewModelStateLossTest {
         override suspend fun updateAlert(alert: Alert) {}
         override suspend fun deleteAlert(alertId: String) {}
         override val lastRefreshError: Flow<String?> = flowOf(null)
+        override suspend fun refresh() {}
     }
 
     // ── Filter state is lost after clear() + recreate ─────────────────────────

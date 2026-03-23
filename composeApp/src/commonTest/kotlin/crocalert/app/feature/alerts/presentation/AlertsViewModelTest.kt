@@ -40,6 +40,7 @@ class AlertsViewModelTest {
         override suspend fun updateAlert(alert: Alert) {}
         override suspend fun deleteAlert(alertId: String) {}
         override val lastRefreshError: Flow<String?> = flowOf(null)
+        override suspend fun refresh() {}
     }
 
     private fun errorRepo(message: String): AlertRepository = object : AlertRepository {
@@ -49,6 +50,7 @@ class AlertsViewModelTest {
         override suspend fun updateAlert(alert: Alert) {}
         override suspend fun deleteAlert(alertId: String) {}
         override val lastRefreshError: Flow<String?> = flowOf(null)
+        override suspend fun refresh() {}
     }
 
     /** Minimal alert with overridable createdAt for filter/sort tests. */
@@ -75,6 +77,7 @@ class AlertsViewModelTest {
             override suspend fun updateAlert(alert: Alert) {}
             override suspend fun deleteAlert(alertId: String) {}
             override val lastRefreshError: Flow<String?> = flowOf(null)
+            override suspend fun refresh() {}
         }
         val vmScope = CoroutineScope(StandardTestDispatcher(testScheduler))
         val vm = AlertsViewModel(repository = neverRepo, coroutineScope = vmScope)
@@ -136,10 +139,11 @@ class AlertsViewModelTest {
         val vm = AlertsViewModel(repository = MockAlertRepository(), coroutineScope = vmScope)
         advanceUntilIdle()
         vm.setFilter(AlertFilter.CUSTOM)
+        advanceUntilIdle()
 
         val state = vm.uiState.value
         assertIs<AlertsUiState.Empty>(state)
-        assertTrue(state.message.contains("date range", ignoreCase = true))
+        assertTrue(state.message.contains("rango", ignoreCase = true) || state.message.contains("fechas", ignoreCase = true))
         vmScope.cancel()
     }
 
@@ -324,6 +328,7 @@ class AlertsViewModelTest {
 
         // Force CUSTOM via setFilter directly (no range set yet)
         vm.setFilter(AlertFilter.CUSTOM)
+        advanceUntilIdle()
 
         assertIs<AlertsUiState.Empty>(vm.uiState.value)
         vmScope.cancel()
