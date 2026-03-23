@@ -4,6 +4,7 @@ import com.google.cloud.firestore.DocumentSnapshot
 import crocalert.app.shared.data.dto.CameraDto
 import crocalert.server.FirebaseInit
 import java.util.UUID
+import com.google.cloud.Timestamp
 
 class CameraService : CameraServicePort {
 
@@ -21,7 +22,8 @@ class CameraService : CameraServicePort {
             isActive = getBoolean("isActive") ?: true,
             siteId = (get("siteId") as? DocumentReference)?.path ?: getString("siteId"),
             createdAt = created,
-            installedAt = installed
+            installedAt = installed,
+            expectedImages = getLong("expectedImages")?.toInt()
         )
     }
 
@@ -40,13 +42,28 @@ class CameraService : CameraServicePort {
 
         val id = dto.id.ifBlank { UUID.randomUUID().toString() }
 
-        val data = mapOf(
+        val data = mutableMapOf<String, Any?>(
             "name" to dto.name,
             "isActive" to dto.isActive,
             "siteId" to dto.siteId,
-            "createdAt" to dto.createdAt,
-            "installedAt" to dto.installedAt
+            "expectedImages" to dto.expectedImages
         )
+
+        dto.createdAt?.let {
+            data["createdAt"] =
+                Timestamp.ofTimeSecondsAndNanos(
+                    it / 1000,
+                    ((it % 1000) * 1_000_000).toInt()
+                )
+        }
+
+        dto.installedAt?.let {
+            data["installedAt"] =
+                Timestamp.ofTimeSecondsAndNanos(
+                    it / 1000,
+                    ((it % 1000) * 1_000_000).toInt()
+                )
+        }
 
         col.document(id).set(data).get()
 
@@ -60,13 +77,28 @@ class CameraService : CameraServicePort {
 
         if (!current.exists()) return false
 
-        val data = mapOf(
+        val data = mutableMapOf<String, Any?>(
             "name" to dto.name,
             "isActive" to dto.isActive,
             "siteId" to dto.siteId,
-            "createdAt" to dto.createdAt,
-            "installedAt" to dto.installedAt
+            "expectedImages" to dto.expectedImages
         )
+
+        dto.createdAt?.let {
+            data["createdAt"] =
+                Timestamp.ofTimeSecondsAndNanos(
+                    it / 1000,
+                    ((it % 1000) * 1_000_000).toInt()
+                )
+        }
+
+        dto.installedAt?.let {
+            data["installedAt"] =
+                Timestamp.ofTimeSecondsAndNanos(
+                    it / 1000,
+                    ((it % 1000) * 1_000_000).toInt()
+                )
+        }
 
         ref.set(data).get()
 
