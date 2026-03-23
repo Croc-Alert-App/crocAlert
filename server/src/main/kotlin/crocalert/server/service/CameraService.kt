@@ -4,16 +4,18 @@ import com.google.cloud.firestore.DocumentSnapshot
 import crocalert.app.shared.data.dto.CameraDto
 import crocalert.server.FirebaseInit
 import java.util.UUID
+import com.google.cloud.Timestamp
+import crocalert.app.shared.data.dto.CameraDailyStatsDto
 
 class CameraService : CameraServicePort {
 
     private val db by lazy { FirebaseInit.firestore() }
     private val col by lazy { db.collection("camera") }
-
+    private val imagesPerDayCol by lazy { db.collection("images_per_day") }
     private fun DocumentSnapshot.toCameraDto(): CameraDto {
 
-        val created = getTimestamp("createdAt")?.toDate()?.time
-        val installed = getTimestamp("installedAt")?.toDate()?.time
+        val created   = getTimestamp("createdAt")?.toDate()?.time   ?: getLong("createdAt")
+        val installed = getTimestamp("installedAt")?.toDate()?.time ?: getLong("installedAt")
 
         return CameraDto(
             id = id,
@@ -21,7 +23,8 @@ class CameraService : CameraServicePort {
             isActive = getBoolean("isActive") ?: true,
             siteId = (get("siteId") as? DocumentReference)?.path ?: getString("siteId"),
             createdAt = created,
-            installedAt = installed
+            installedAt = installed,
+            expectedImages = (getLong("expectedImages") ?: getLong("excpectedImages"))?.toInt()
         )
     }
 
@@ -40,13 +43,28 @@ class CameraService : CameraServicePort {
 
         val id = dto.id.ifBlank { UUID.randomUUID().toString() }
 
-        val data = mapOf(
+        val data = mutableMapOf<String, Any?>(
             "name" to dto.name,
             "isActive" to dto.isActive,
             "siteId" to dto.siteId,
-            "createdAt" to dto.createdAt,
-            "installedAt" to dto.installedAt
+            "expectedImages" to dto.expectedImages
         )
+
+        dto.createdAt?.let {
+            data["createdAt"] =
+                Timestamp.ofTimeSecondsAndNanos(
+                    it / 1000,
+                    ((it % 1000) * 1_000_000).toInt()
+                )
+        }
+
+        dto.installedAt?.let {
+            data["installedAt"] =
+                Timestamp.ofTimeSecondsAndNanos(
+                    it / 1000,
+                    ((it % 1000) * 1_000_000).toInt()
+                )
+        }
 
         col.document(id).set(data).get()
 
@@ -60,15 +78,30 @@ class CameraService : CameraServicePort {
 
         if (!current.exists()) return false
 
-        val data = mapOf(
-            "name" to dto.name,
+        // Use a non-null map so ref.update() doesn't reject null entries.
+        // Nullable fields are only included when they have a value — this preserves
+        // any existing Firestore fields we didn't read (e.g. legacy typo fields).
+        val data = mutableMapOf<String, Any>(
+            "name"     to dto.name,
             "isActive" to dto.isActive,
-            "siteId" to dto.siteId,
-            "createdAt" to dto.createdAt,
-            "installedAt" to dto.installedAt
         )
 
-        ref.set(data).get()
+        dto.siteId?.let          { data["siteId"] = it }
+        dto.expectedImages?.let  { data["expectedImages"] = it }
+
+        dto.createdAt?.let {
+            data["createdAt"] = Timestamp.ofTimeSecondsAndNanos(
+                it / 1000, ((it % 1000) * 1_000_000).toInt()
+            )
+        }
+
+        dto.installedAt?.let {
+            data["installedAt"] = Timestamp.ofTimeSecondsAndNanos(
+                it / 1000, ((it % 1000) * 1_000_000).toInt()
+            )
+        }
+
+        ref.update(data).get()
 
         return true
     }
@@ -83,5 +116,69 @@ class CameraService : CameraServicePort {
         ref.delete().get()
 
         return true
+    }
+     override suspend fun getDailyStats(cameraId: String, date: String): CameraDailyStatsDto? {
+        val cameraDoc = col.document(cameraId).get().get()
+        if (!cameraDoc.exists()) return null
+
+        val isActive = cameraDoc.getBoolean("isActive") ?: true
+        val installedAt = cameraDoc.getTimestamp("installedAt")?.toDate()?.time
+        val expectedImages =
+            cameraDoc.getLong("expectedImages")?.toInt()
+                ?: cameraDoc.getLong("excpectedImages")?.toInt()
+                ?: 0
+
+        val dayDoc = imagesPerDayCol.document(date).get().get()
+
+        val receivedImages = if (dayDoc.exists()) {
+            val imagesMap = dayDoc.get("imagesPerDay") as? Map<*, *>
+            (imagesMap?.get(cameraId) as? Number)?.toInt() ?: 0
+        } else {
+            0
+        }
+
+        val missingImages = (expectedImages - receivedImages).coerceAtLeast(0)
+
+        return CameraDailyStatsDto(
+            cameraId = cameraId,
+            date = date,
+            expectedImages = expectedImages,
+            receivedImages = receivedImages,
+            missingImages = missingImages,
+            isActive = isActive,
+            installedAt = installedAt
+        )
+    }
+
+     override suspend fun getDailyStatsForAll(date: String): List<CameraDailyStatsDto> {
+        val camerasSnap = col.get().get()
+        val dayDoc = imagesPerDayCol.document(date).get().get()
+
+        val imagesMap = if (dayDoc.exists()) {
+            dayDoc.get("imagesPerDay") as? Map<*, *> ?: emptyMap<Any, Any>()
+        } else {
+            emptyMap<Any, Any>()
+        }
+
+        return camerasSnap.documents.map { cameraDoc ->
+            val cameraId = cameraDoc.id
+            val expectedImages =
+                cameraDoc.getLong("expectedImages")?.toInt()
+                    ?: cameraDoc.getLong("excpectedImages")?.toInt()
+                    ?: 0
+
+            val receivedImages = (imagesMap[cameraId] as? Number)?.toInt() ?: 0
+            val missingImages = (expectedImages - receivedImages).coerceAtLeast(0)
+
+            CameraDailyStatsDto(
+                cameraId = cameraId,
+                date = date,
+                expectedImages = expectedImages,
+                receivedImages = receivedImages,
+                missingImages = missingImages,
+                isActive = cameraDoc.getBoolean("isActive") ?: true,
+                installedAt = cameraDoc.getTimestamp("installedAt")?.toDate()?.time
+            )
+        }
     }
 }

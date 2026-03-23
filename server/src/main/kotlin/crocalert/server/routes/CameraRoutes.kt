@@ -60,5 +60,24 @@ fun Route.cameraRoutes(service: CameraServicePort) {
             else
                 call.respond(HttpStatusCode.NotFound)
         }
+        get("{id}/daily-stats/{date}") {
+            val cameraId = call.parameters["id"]
+                ?: return@get call.respond(HttpStatusCode.BadRequest, "Missing camera id")
+
+            val date = call.parameters["date"]
+                ?: return@get call.respond(HttpStatusCode.BadRequest, "Missing date")
+
+            val stats = service.getDailyStats(cameraId, date)
+                ?: return@get call.respond(HttpStatusCode.NotFound, "Camera not found")
+
+            call.respond(stats)
+        }
+
+        get("daily-stats/{date}") {
+            val date = call.parameters["date"]
+                ?: return@get call.respond(HttpStatusCode.BadRequest, "Missing date")
+
+            call.respond(service.getDailyStatsForAll(date))
+        }
     }
 }

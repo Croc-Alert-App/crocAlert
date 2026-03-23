@@ -3,6 +3,9 @@ package crocalert.app.shared
 import crocalert.app.domain.repository.AlertRepository
 import crocalert.app.domain.repository.CameraRepository
 import crocalert.app.domain.repository.SiteRepository
+import crocalert.app.shared.data.local.InMemoryAlertLocalDataSource
+import crocalert.app.shared.data.local.InMemoryCameraLocalDataSource
+import crocalert.app.shared.data.local.InMemorySiteLocalDataSource
 import crocalert.app.shared.data.remote.AlertRemoteDataSourceImpl
 import crocalert.app.shared.data.remote.CameraRemoteDataSourceImpl
 import crocalert.app.shared.data.remote.SiteRemoteDataSourceImpl
@@ -17,15 +20,15 @@ private val sharedHttpClient by lazy { HttpClientFactory.create() }
 
 fun createAlertRepository(baseUrl: String = ApiRoutes.BASE): AlertRepository {
     val remote = AlertRemoteDataSourceImpl(sharedHttpClient, baseUrl)
-    return AlertRepositoryImpl(remote)
+    return AlertRepositoryImpl(remote, InMemoryAlertLocalDataSource())
 }
 
 fun createCameraRepository(baseUrl: String = ApiRoutes.BASE): CameraRepository {
     val remote = CameraRemoteDataSourceImpl(sharedHttpClient, baseUrl)
-    return CameraRepositoryImpl(remote)
+    return CameraRepositoryImpl(remote, InMemoryCameraLocalDataSource())
 }
 
 fun createSiteRepository(baseUrl: String = ApiRoutes.BASE): SiteRepository {
     val remote = SiteRemoteDataSourceImpl(sharedHttpClient, baseUrl)
-    return SiteRepositoryImpl(remote)
+    return SiteRepositoryImpl(remote, InMemorySiteLocalDataSource())
 }

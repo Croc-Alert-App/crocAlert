@@ -31,6 +31,11 @@ androidxLifecycle = "2.8.0"
 # Compose Navigation (Multiplatform)
 navigationCompose = "2.7.0-alpha07"
 
+# SQLDelight + Sync
+sqldelight  = "2.0.2"
+workmanager = "2.9.1"
+datastore   = "1.1.1"
+
 # Tests
 junit = "4.13.2"
 turbine = "1.2.0"
@@ -93,6 +98,17 @@ koinCompose = { module = "io.insert-koin:koin-compose" }
 koinAndroidxCompose = { module = "io.insert-koin:koin-androidx-compose", version.ref = "koin" }
 koinComposeViewmodelNavigation = { module = "io.insert-koin:koin-compose-viewmodel-navigation" }
 
+# ---------- SQLDelight ----------
+sqldelightCoroutines = { module = "app.cash.sqldelight:coroutines-extensions", version.ref = "sqldelight" }
+sqldelightAndroid    = { module = "app.cash.sqldelight:android-driver",         version.ref = "sqldelight" }
+sqldelightSqlite     = { module = "app.cash.sqldelight:sqlite-driver",          version.ref = "sqldelight" }
+
+# ---------- WorkManager ----------
+workmanagerKtx = { module = "androidx.work:work-runtime-ktx", version.ref = "workmanager" }
+
+# ---------- DataStore ----------
+datastorePrefs = { module = "androidx.datastore:datastore-preferences", version.ref = "datastore" }
+
 # ---------- Tests ----------
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
 kotlin-testJunit = { module = "org.jetbrains.kotlin:kotlin-test-junit", version.ref = "kotlin" }
@@ -114,3 +130,4 @@ composeMultiplatform = { id = "org.jetbrains.compose", version.ref = "composeMul
 composeCompiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 kotlinSerialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 kover = { id = "org.jetbrains.kotlinx.kover", version.ref = "kover" }
+sqldelight = { id = "app.cash.sqldelight", version.ref = "sqldelight" }

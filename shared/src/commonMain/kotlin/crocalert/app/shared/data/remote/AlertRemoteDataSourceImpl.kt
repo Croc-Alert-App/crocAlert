@@ -11,6 +11,7 @@ import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.delete
 import io.ktor.client.request.get
 import io.ktor.client.request.header
+import io.ktor.client.request.parameter
 import io.ktor.client.request.post
 import io.ktor.client.request.put
 import io.ktor.client.request.setBody
@@ -30,8 +31,13 @@ class AlertRemoteDataSourceImpl(
         if (key.isNotBlank()) header("X-API-Key", key)
     }
 
-    override suspend fun getAlerts(): ApiResult<List<AlertDto>> =
-        safeCall { client.get(alertsUrl) { addAuth() }.body() }
+    override suspend fun getAlerts(since: Long?): ApiResult<List<AlertDto>> =
+        safeCall {
+            client.get(alertsUrl) {
+                addAuth()
+                if (since != null) parameter("since", since)
+            }.body()
+        }
 
     override suspend fun getAlert(id: String): ApiResult<AlertDto> =
         safeCall { client.get("$alertsUrl/$id") { addAuth() }.body() }

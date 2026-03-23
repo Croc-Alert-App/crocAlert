@@ -31,6 +31,8 @@ class CameraRoutesTest {
             return true
         }
         override suspend fun delete(id: String): Boolean = cameras.removeIf { it.id == id }
+        override suspend fun getDailyStats(cameraId: String, date: String) = null
+        override suspend fun getDailyStatsForAll(date: String) = emptyList<crocalert.app.shared.data.dto.CameraDailyStatsDto>()
     }
 
     // ── Test application builder ───────────────────────────────────────────────

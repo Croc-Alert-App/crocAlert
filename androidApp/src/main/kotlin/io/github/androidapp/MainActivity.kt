@@ -11,7 +11,7 @@ import crocalert.app.theme.CrocAlertTheme
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        AppModule.setup()
+        AppModule.setup(applicationContext)
         enableEdgeToEdge()
         setContent {
             CrocAlertTheme {

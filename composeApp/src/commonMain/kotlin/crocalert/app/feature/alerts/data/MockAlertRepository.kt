@@ -43,4 +43,6 @@ class MockAlertRepository : AlertRepository {
     override suspend fun deleteAlert(alertId: String) {
         alertsFlow.value = alertsFlow.value.filter { it.id != alertId }
     }
+
+    override suspend fun refresh() = Unit
 }

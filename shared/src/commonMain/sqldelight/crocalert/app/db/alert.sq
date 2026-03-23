@@ -1,0 +1,29 @@
+CREATE TABLE IF NOT EXISTS alert_entity (
+    id            TEXT    NOT NULL PRIMARY KEY,
+    capture_id    TEXT    NOT NULL DEFAULT '',
+    camera_id     TEXT    NOT NULL DEFAULT '',
+    ai_confidence REAL,
+    created_at    INTEGER NOT NULL DEFAULT 0,
+    status        TEXT    NOT NULL DEFAULT 'OPEN',
+    priority      TEXT    NOT NULL DEFAULT 'MEDIUM',
+    title         TEXT    NOT NULL DEFAULT '',
+    folder        TEXT,
+    synced_at     INTEGER NOT NULL DEFAULT 0
+);
+
+upsertAll:
+INSERT OR REPLACE INTO alert_entity
+    (id, capture_id, camera_id, ai_confidence, created_at, status, priority, title, folder, synced_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+selectAll:
+SELECT * FROM alert_entity ORDER BY created_at DESC;
+
+lastSyncedAt:
+SELECT MAX(synced_at) FROM alert_entity;
+
+latestCreatedAt:
+SELECT MAX(created_at) FROM alert_entity;
+
+deleteAll:
+DELETE FROM alert_entity;

@@ -8,6 +8,7 @@ import crocalert.app.theme.CrocNeutralDark
 data class CameraUiItem(
     val id: String,
     val name: String,
+    val isActive: Boolean,
     val status: CameraStatus,
     val lastCapture: String,
     val imagesSent: Int,
@@ -38,6 +39,16 @@ enum class CameraStatus {
         Alert     -> CrocAmber
         Attention -> CrocBlue
         Ok        -> CrocNeutralDark
+    }
+}
+
+enum class VisibilityFilter {
+    Active, Deleted, All;
+
+    val label: String get() = when (this) {
+        Active  -> "Activas"
+        Deleted -> "Eliminadas"
+        All     -> "Todas"
     }
 }
 

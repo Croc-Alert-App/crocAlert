@@ -30,7 +30,7 @@ fun ErrorState(
         )
         Spacer(Modifier.height(16.dp))
         Text(
-            text = "Something went wrong",
+            text = "Algo salió mal",
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.onSurface,
             textAlign = TextAlign.Center,
@@ -44,7 +44,7 @@ fun ErrorState(
         )
         Spacer(Modifier.height(24.dp))
         Button(onClick = onRetry) {
-            Text("Retry")
+            Text("Reintentar")
         }
     }
 }

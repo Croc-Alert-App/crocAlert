@@ -3,7 +3,6 @@ package crocalert.app.ui.cameras
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -16,20 +15,25 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.ChevronLeft
 import androidx.compose.material.icons.outlined.ChevronRight
+import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.Remove
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -54,6 +58,7 @@ fun CameraHistoryScreen(
     cameraId: String,
     cameraName: String,
     onBack: () -> Unit,
+    onEditClick: () -> Unit = {},
     viewModel: CameraHistoryViewModel = viewModel(key = cameraId) {
         CameraHistoryViewModel(cameraId, cameraName)
     },
@@ -62,7 +67,7 @@ fun CameraHistoryScreen(
 
     Column(modifier = Modifier.fillMaxSize()) {
         // — Header ————————————————————————————————————————————————————————————
-        HistoryHeader(cameraName = uiState.cameraName, onBack = onBack)
+        HistoryHeader(cameraName = uiState.cameraName, onBack = onBack, onEdit = onEditClick)
 
         Column(
             modifier = Modifier
@@ -92,7 +97,8 @@ fun CameraHistoryScreen(
                     CaptureStatsRow(
                         received = uiState.received,
                         missing = uiState.missing,
-                        expected = uiState.expected,
+                        expectedPerDay = uiState.expectedPerDay,
+                        onExpectedChange = viewModel::setExpectedPerDay,
                     )
                 }
             }
@@ -155,29 +161,39 @@ fun CameraHistoryScreen(
 // — Private sub-composables ————————————————————————————————————————————————
 
 @Composable
-private fun HistoryHeader(cameraName: String, onBack: () -> Unit) {
-    Column(modifier = Modifier.padding(horizontal = 16.dp)) {
-        TextButton(
-            onClick = onBack,
-            contentPadding = PaddingValues(horizontal = 0.dp, vertical = 4.dp),
-        ) {
-            Text(
-                text = "← Cámaras",
-                style = MaterialTheme.typography.labelMedium,
-                color = CrocBlue,
+private fun HistoryHeader(cameraName: String, onBack: () -> Unit, onEdit: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 4.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        IconButton(onClick = onBack) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
+                contentDescription = "Volver",
+                tint = CrocBlue,
             )
         }
-        Text(
-            text = "HISTORIAL DE CAPTURAS",
-            style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.ExtraBold),
-            color = CrocBlue,
-        )
-        Text(
-            text = cameraName,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(bottom = 4.dp),
-        )
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = "HISTORIAL DE CAPTURAS",
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.ExtraBold),
+                color = CrocBlue,
+            )
+            Text(
+                text = cameraName,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        IconButton(onClick = onEdit) {
+            Icon(
+                imageVector = Icons.Outlined.Edit,
+                contentDescription = "Editar cámara",
+                tint = CrocBlue,
+            )
+        }
     }
 }
 
@@ -227,14 +243,66 @@ private fun DateNavigationRow(
 }
 
 @Composable
-private fun CaptureStatsRow(received: Int, missing: Int, expected: Int) {
+private fun CaptureStatsRow(
+    received: Int,
+    missing: Int,
+    expectedPerDay: Int,
+    onExpectedChange: (Int) -> Unit,
+) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceEvenly,
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         CaptureStatChip(label = "Recibidas", count = received, color = CrocBlue)
         CaptureStatChip(label = "Perdidas", count = missing, color = CrocAmber)
-        CaptureStatChip(label = "Esperadas", count = expected, color = CrocNeutralDark)
+        ExpectedStepper(value = expectedPerDay, onValueChange = onExpectedChange)
+    }
+}
+
+@Composable
+private fun ExpectedStepper(value: Int, onValueChange: (Int) -> Unit) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(
+            text = "Esperadas",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.height(4.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            FilledIconButton(
+                onClick = { onValueChange(value - 1) },
+                modifier = Modifier.size(28.dp),
+                enabled = value > 1,
+                colors = IconButtonDefaults.filledIconButtonColors(containerColor = CrocNeutralDark),
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Remove,
+                    contentDescription = "Reducir esperadas",
+                    modifier = Modifier.size(14.dp),
+                    tint = CrocWhite,
+                )
+            }
+            Text(
+                text = "$value",
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.padding(horizontal = 10.dp),
+            )
+            FilledIconButton(
+                onClick = { onValueChange(value + 1) },
+                modifier = Modifier.size(28.dp),
+                enabled = value < 48,
+                colors = IconButtonDefaults.filledIconButtonColors(containerColor = CrocNeutralDark),
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Add,
+                    contentDescription = "Aumentar esperadas",
+                    modifier = Modifier.size(14.dp),
+                    tint = CrocWhite,
+                )
+            }
+        }
     }
 }
 
@@ -282,7 +350,7 @@ private fun CaptureProgressSection(
             color = MaterialTheme.colorScheme.onSurface,
         )
         Text(
-            text = "$received / $expected expected",
+            text = "$received / $expected esperadas",
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )

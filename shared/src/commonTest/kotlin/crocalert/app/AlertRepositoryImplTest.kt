@@ -5,9 +5,12 @@ import crocalert.app.model.AlertPriority
 import crocalert.app.model.AlertStatus
 import crocalert.app.shared.data.dto.AlertDto
 import crocalert.app.shared.data.dto.IdResponse
+import crocalert.app.shared.data.local.InMemoryAlertLocalDataSource
 import crocalert.app.shared.data.remote.AlertRemoteDataSource
 import crocalert.app.shared.data.repository.AlertRepositoryImpl
 import crocalert.app.shared.network.ApiResult
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import kotlin.test.*
@@ -34,7 +37,9 @@ class AlertRepositoryImplTest {
         title = "Test alert"
     )
 
-    private fun repo(fake: FakeAlertRemoteDataSource) = AlertRepositoryImpl(fake)
+    private fun repo(fake: FakeAlertRemoteDataSource) =
+        AlertRepositoryImpl(fake, InMemoryAlertLocalDataSource(),
+            coroutineScope = CoroutineScope(Dispatchers.Unconfined))
 
     // ── lastRefreshError ──────────────────────────────────────────────────────
 
@@ -272,7 +277,7 @@ private class FakeAlertRemoteDataSource(
 
     var getCallCount = 0
 
-    override suspend fun getAlerts(): ApiResult<List<AlertDto>> =
+    override suspend fun getAlerts(since: Long?): ApiResult<List<AlertDto>> =
         getAlertsResult.also { getCallCount++ }
 
     override suspend fun getAlert(id: String): ApiResult<AlertDto> =

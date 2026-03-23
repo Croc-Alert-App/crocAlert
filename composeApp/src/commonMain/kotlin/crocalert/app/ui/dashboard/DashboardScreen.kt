@@ -25,14 +25,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Person
 import crocalert.app.theme.CrocAmber
 import crocalert.app.theme.CrocBlue
 import crocalert.app.feature.alerts.ui.AlertListScreen
 import crocalert.app.ui.cameras.CamerasScreen
 import crocalert.app.ui.components.BottomNavBar
 import crocalert.app.ui.components.EmptyStateView
+import crocalert.app.ui.profile.ProfileScreen
 import crocalert.app.ui.components.StatCard
 import crocalert.app.ui.components.SyncBanner
 
@@ -53,7 +52,7 @@ fun DashboardScreen(
             SyncBanner(
                 status = syncStatus,
                 lastUpdated = lastSynced,
-                onRetry = viewModel::retry
+                onRefresh = viewModel::retry
             )
             when (val state = uiState) {
                 is DashboardUiState.Loading -> LoadingContent()
@@ -62,11 +61,7 @@ fun DashboardScreen(
                     DashboardTab.Home -> DashboardContent(state.data, onAlertClick = onAlertClick)
                     DashboardTab.Cameras -> CamerasScreen()
                     DashboardTab.Alerts -> AlertListScreen(onAlertClick = onAlertClick)
-                    DashboardTab.Profile -> EmptyStateView(
-                        icon = Icons.Outlined.Person,
-                        title = "Perfil no disponible",
-                        subtitle = "La información de perfil no está disponible aún."
-                    )
+                    DashboardTab.Profile -> ProfileScreen()
                 }
             }
         }

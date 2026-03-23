@@ -20,9 +20,12 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.ArrowDownward
+import androidx.compose.material.icons.outlined.ArrowUpward
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
@@ -44,7 +47,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import crocalert.app.shared.createAlertRepository
+import crocalert.app.shared.AppModule
 import crocalert.app.feature.alerts.presentation.AlertFilter
 import crocalert.app.feature.alerts.presentation.AlertsUiState
 import crocalert.app.feature.alerts.presentation.AlertsViewModel
@@ -55,7 +58,6 @@ import crocalert.app.feature.alerts.ui.components.AlertListItem
 import crocalert.app.feature.alerts.ui.components.ErrorState
 import crocalert.app.feature.alerts.ui.components.LoadingState
 import crocalert.app.model.Alert
-import crocalert.app.model.AlertPriority
 import crocalert.app.theme.CrocAmber
 import crocalert.app.theme.CrocBlack
 import crocalert.app.theme.CrocBlue
@@ -68,13 +70,13 @@ import kotlinx.datetime.toLocalDateTime
 
 // ── Tab definition ────────────────────────────────────────────────────────────
 
-private enum class AlertTab(val label: String, val priorities: Set<AlertPriority>) {
-    PRE_ALERTS("Pre-Alertas", setOf(AlertPriority.MEDIUM)),
-    ALERTS("Alertas", setOf(AlertPriority.CRITICAL, AlertPriority.HIGH)),
+private enum class AlertTab(val label: String, val folder: String) {
+    PRE_ALERTS("Pre-Alertas", "pre-alertas"),
+    ALERTS("Alertas", "alertas"),
 }
 
 private fun List<Alert>.forTab(tab: AlertTab): List<Alert> =
-    filter { it.priority in tab.priorities }
+    filter { it.folder == tab.folder }
 
 // ── Screen ────────────────────────────────────────────────────────────────────
 
@@ -82,7 +84,7 @@ private fun List<Alert>.forTab(tab: AlertTab): List<Alert> =
 @Composable
 fun AlertListScreen(
     onAlertClick: (String) -> Unit = {},
-    viewModel: AlertsViewModel = remember { AlertsViewModel(createAlertRepository()) },
+    viewModel: AlertsViewModel = remember { AlertsViewModel(AppModule.provideAlertRepository()) },
 ) {
     DisposableEffect(viewModel) { onDispose { viewModel.clear() } }
 
@@ -127,11 +129,8 @@ fun AlertListScreen(
                             fontWeight = FontWeight.Bold,
                         )
                     }
-                    Spacer(Modifier.width(8.dp))
+                    Spacer(Modifier.width(4.dp))
                 }
-                ActionButton(text = sortDirection.label, onClick = viewModel::toggleSort)
-                Spacer(Modifier.width(6.dp))
-                ActionButton(text = "Actualizar", onClick = viewModel::refresh)
             }
 
             // ── Preset date filter chips ───────────────────────────────────
@@ -143,16 +142,26 @@ fun AlertListScreen(
                     .padding(bottom = 6.dp),
             )
 
-            // ── Custom date range bar ──────────────────────────────────────
-            CustomRangeBar(
-                isActive = activeFilter == AlertFilter.CUSTOM,
-                customRange = customRange,
-                onOpenPicker = { showDateRangePicker = true },
-                onClear = { viewModel.setFilter(AlertFilter.ALL) },
+            // ── Custom date range bar + sort button ────────────────────────
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = 8.dp),
-            )
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                CustomRangeBar(
+                    isActive = activeFilter == AlertFilter.CUSTOM,
+                    customRange = customRange,
+                    onOpenPicker = { showDateRangePicker = true },
+                    onClear = { viewModel.setFilter(AlertFilter.ALL) },
+                    modifier = Modifier.weight(1f),
+                )
+                SortButton(
+                    direction = sortDirection,
+                    onClick = viewModel::toggleSort,
+                )
+            }
         }
 
         HorizontalDivider()
@@ -228,17 +237,25 @@ fun AlertListScreen(
 // ── Sub-composables ───────────────────────────────────────────────────────────
 
 @Composable
-private fun ActionButton(text: String, onClick: () -> Unit) {
-    Button(
+private fun SortButton(direction: SortDirection, onClick: () -> Unit) {
+    OutlinedButton(
         onClick = onClick,
-        shape = RoundedCornerShape(6.dp),
-        colors = ButtonDefaults.buttonColors(
-            containerColor = CrocBlue,
-            contentColor = CrocWhite,
-        ),
-        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
+        shape = RoundedCornerShape(8.dp),
+        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
     ) {
-        Text(text = text, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold)
+        Icon(
+            imageVector = if (direction == SortDirection.DESC) Icons.Outlined.ArrowDownward
+                          else Icons.Outlined.ArrowUpward,
+            contentDescription = direction.label,
+            modifier = Modifier.size(14.dp),
+            tint = CrocBlue,
+        )
+        Spacer(Modifier.width(4.dp))
+        Text(
+            text = if (direction == SortDirection.DESC) "Reciente" else "Antiguo",
+            style = MaterialTheme.typography.labelSmall,
+            color = CrocBlue,
+        )
     }
 }
 

@@ -1,9 +1,11 @@
 package crocalert.app.feature.alerts.ui.components
 
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DateRangePicker
+import androidx.compose.material3.DisplayMode
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -16,11 +18,9 @@ import crocalert.app.feature.alerts.presentation.DateRange
 /**
  * A [DatePickerDialog] wrapping a [DateRangePicker].
  *
- * Single responsibility: collect a start + end date from the user and
- * report them back as epoch-millisecond values via [onRangeSelected].
- *
- * The [initialRange] pre-populates the picker when the user is editing
- * an existing custom range (re-opening the dialog after a first selection).
+ * Opens in [DisplayMode.Input] (text-field entry) by default so the dialog
+ * stays compact. The user can tap the calendar icon to switch to the full
+ * calendar picker.
  *
  * Confirm is disabled until both a start and an end date are chosen.
  */
@@ -34,6 +34,7 @@ fun AlertDateRangePickerDialog(
     val state = rememberDateRangePickerState(
         initialSelectedStartDateMillis = initialRange?.startMs,
         initialSelectedEndDateMillis = initialRange?.endMs,
+        initialDisplayMode = DisplayMode.Input,
     )
 
     val canConfirm = state.selectedStartDateMillis != null && state.selectedEndDateMillis != null
@@ -64,8 +65,11 @@ fun AlertDateRangePickerDialog(
             state = state,
             modifier = Modifier
                 .fillMaxWidth()
-                .weight(1f)
-                .padding(top = 8.dp),
+                .heightIn(max = 480.dp)
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            title = { Text("Seleccionar rango", modifier = Modifier.padding(start = 4.dp, top = 8.dp)) },
+            headline = null,
+            showModeToggle = true,
         )
     }
 }

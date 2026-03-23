@@ -1,16 +1,54 @@
 package crocalert.app.ui.cameras
 
 import crocalert.app.model.Camera
+import crocalert.app.shared.data.dto.CameraDailyStatsDto
 import crocalert.app.shared.data.dto.CaptureDto
 import kotlinx.datetime.Clock
 
-private const val EXPECTED_CAPTURES_PER_DAY = 24
+internal const val DEFAULT_EXPECTED_PER_DAY = 24
 private const val INTEGRITY_THRESHOLD = 0.90f
 private const val DAY_MILLIS = 86_400_000L
 
+/**
+ * Builds a [CameraUiItem] from server-authoritative daily stats.
+ * Used by the cameras list screen — avoids per-camera capture fetches.
+ */
+fun Camera.toUiItem(stats: CameraDailyStatsDto): CameraUiItem {
+    val received = stats.receivedImages
+    val expected = expectedImages?.takeIf { it > 0 }
+        ?: stats.expectedImages.takeIf { it > 0 }
+        ?: DEFAULT_EXPECTED_PER_DAY
+    val missing = stats.missingImages
+    val rate = if (expected > 0) received.toFloat() / expected else 1f
+
+    val status = when {
+        !isActive || received == 0 -> CameraStatus.Alert
+        rate < INTEGRITY_THRESHOLD -> CameraStatus.Attention
+        else                       -> CameraStatus.Ok
+    }
+
+    return CameraUiItem(
+        id = id,
+        name = name,
+        isActive = isActive,
+        status = status,
+        lastCapture = "—",          // not available from stats endpoint
+        imagesSent = received,
+        imagesExpected = expected,
+        captureCount = received,
+        captureExpected = expected,
+        missingCaptures = missing,
+        integrityFlags = 0,         // detail-level; shown in history screen only
+    )
+}
+
+/**
+ * Builds a [CameraUiItem] from individual captures (used when stats are unavailable).
+ * Also used by the history screen where capture-level data is needed.
+ */
 fun Camera.toUiItem(
     captures: List<CaptureDto>,
-    expectedPerDay: Int = EXPECTED_CAPTURES_PER_DAY
+    expectedPerDay: Int = expectedImages?.takeIf { it > 0 } ?: DEFAULT_EXPECTED_PER_DAY,
 ): CameraUiItem {
     val now = Clock.System.now().toEpochMilliseconds()
     val dayAgo = now - DAY_MILLIS
@@ -28,11 +66,12 @@ fun Camera.toUiItem(
         else                           -> CameraStatus.Ok
     }
 
-    val integrityFlags = if (rate < INTEGRITY_THRESHOLD) 1 else 0
+    val integrityFlags = todayCaptures.count { it.driveUrl.isBlank() }
 
     return CameraUiItem(
         id = id,
         name = name,
+        isActive = isActive,
         status = status,
         lastCapture = lastCapture?.captureTime?.toRelativeTime() ?: "—",
         imagesSent = sent,
@@ -40,17 +79,17 @@ fun Camera.toUiItem(
         captureCount = captureCount,
         captureExpected = expectedPerDay,
         missingCaptures = missing,
-        integrityFlags = integrityFlags
+        integrityFlags = integrityFlags,
     )
 }
 
-private fun Long.toRelativeTime(): String {
+internal fun Long.toRelativeTime(): String {
     val diffMs = Clock.System.now().toEpochMilliseconds() - this
     val diffMin = diffMs / 60_000
     return when {
-        diffMin < 1    -> "just now"
-        diffMin < 60   -> "${diffMin}m ago"
-        diffMin < 1440 -> "${diffMin / 60}h ago"
-        else           -> "${diffMin / 1440}d ago"
+        diffMin < 1    -> "Ahora mismo"
+        diffMin < 60   -> "Hace ${diffMin} min"
+        diffMin < 1440 -> "Hace ${diffMin / 60} h"
+        else           -> "Hace ${diffMin / 1440} días"
     }
 }

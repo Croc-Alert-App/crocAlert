@@ -1,6 +1,11 @@
 package crocalert.app
 
+import crocalert.app.domain.repository.CameraRepository
 import crocalert.app.feature.alerts.data.MockAlertRepository
+import crocalert.app.model.Camera
+import crocalert.app.shared.data.dto.CameraDailyStatsDto
+import crocalert.app.shared.data.dto.CaptureDto
+import crocalert.app.shared.network.ApiResult
 import crocalert.app.ui.dashboard.DashboardData
 import crocalert.app.ui.dashboard.DashboardTab
 import crocalert.app.ui.dashboard.DashboardUiState
@@ -9,6 +14,8 @@ import crocalert.app.ui.dashboard.SyncStatus
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
@@ -27,6 +34,18 @@ import kotlin.test.*
 class DashboardViewModelTest {
 
     private val testDispatcher = UnconfinedTestDispatcher()
+
+    private val fakeCameraRepo = object : CameraRepository {
+        override fun observeCameras(siteId: String?): Flow<List<Camera>> = flowOf(emptyList())
+        override fun observeCamera(cameraId: String): Flow<Camera?> = flowOf(null)
+        override suspend fun getCapturesByCamera(cameraId: String): ApiResult<List<CaptureDto>> = ApiResult.Success(emptyList())
+        override suspend fun getDailyStats(cameraId: String, date: String): ApiResult<CameraDailyStatsDto> = ApiResult.Error("not implemented", 501)
+        override suspend fun getDailyStatsForAll(date: String): ApiResult<List<CameraDailyStatsDto>> = ApiResult.Success(emptyList())
+        override suspend fun createCamera(camera: Camera): String = ""
+        override suspend fun updateCamera(camera: Camera) {}
+        override suspend fun deleteCamera(cameraId: String) {}
+        override suspend fun refresh() {}
+    }
 
     private val successData = DashboardData(
         activeCameras = 5,
@@ -56,7 +75,7 @@ class DashboardViewModelTest {
     @Test
     fun `initial uiState is Loading before data arrives`() = runTest {
         val deferred = CompletableDeferred<DashboardData>()
-        val vm = DashboardViewModel(alertRepository = MockAlertRepository(), loadMetrics = { deferred.await() })
+        val vm = DashboardViewModel(alertRepository = MockAlertRepository(), cameraRepository = fakeCameraRepo, loadMetrics = { deferred.await() })
         // loadData() launched; suspended at deferred.await() — state not yet resolved
         assertEquals(DashboardUiState.Loading, vm.uiState.value)
         deferred.cancel()
@@ -65,7 +84,7 @@ class DashboardViewModelTest {
     @Test
     fun `initial syncStatus is Syncing before data arrives`() = runTest {
         val deferred = CompletableDeferred<DashboardData>()
-        val vm = DashboardViewModel(alertRepository = MockAlertRepository(), loadMetrics = { deferred.await() })
+        val vm = DashboardViewModel(alertRepository = MockAlertRepository(), cameraRepository = fakeCameraRepo, loadMetrics = { deferred.await() })
         assertEquals(SyncStatus.Syncing, vm.syncStatus.value)
         deferred.cancel()
     }
@@ -74,7 +93,7 @@ class DashboardViewModelTest {
 
     @Test
     fun `uiState becomes Success after loadMetrics completes`() = runTest {
-        val vm = DashboardViewModel(alertRepository = MockAlertRepository(), loadMetrics = { successData })
+        val vm = DashboardViewModel(alertRepository = MockAlertRepository(), cameraRepository = fakeCameraRepo, loadMetrics = { successData })
         advanceUntilIdle()
         assertIs<DashboardUiState.Success>(vm.uiState.value)
         assertEquals(5, (vm.uiState.value as DashboardUiState.Success).data.activeCameras)
@@ -82,14 +101,14 @@ class DashboardViewModelTest {
 
     @Test
     fun `syncStatus becomes Synced after successful load`() = runTest {
-        val vm = DashboardViewModel(alertRepository = MockAlertRepository(), loadMetrics = { successData })
+        val vm = DashboardViewModel(alertRepository = MockAlertRepository(), cameraRepository = fakeCameraRepo, loadMetrics = { successData })
         advanceUntilIdle()
         assertEquals(SyncStatus.Synced, vm.syncStatus.value)
     }
 
     @Test
     fun `lastSynced is populated with HH colon MM format after success`() = runTest {
-        val vm = DashboardViewModel(alertRepository = MockAlertRepository(), loadMetrics = { successData })
+        val vm = DashboardViewModel(alertRepository = MockAlertRepository(), cameraRepository = fakeCameraRepo, loadMetrics = { successData })
         advanceUntilIdle()
         val synced = vm.lastSynced.value
         assertTrue(synced.isNotEmpty(), "lastSynced should not be empty")
@@ -103,7 +122,7 @@ class DashboardViewModelTest {
 
     @Test
     fun `uiState becomes Error when loadMetrics throws`() = runTest {
-        val vm = DashboardViewModel(alertRepository = MockAlertRepository(), loadMetrics = { throw RuntimeException("API down") })
+        val vm = DashboardViewModel(alertRepository = MockAlertRepository(), cameraRepository = fakeCameraRepo, loadMetrics = { throw RuntimeException("API down") })
         advanceUntilIdle()
         val state = vm.uiState.value
         assertIs<DashboardUiState.Error>(state)
@@ -112,14 +131,14 @@ class DashboardViewModelTest {
 
     @Test
     fun `syncStatus becomes Error when loadMetrics throws`() = runTest {
-        val vm = DashboardViewModel(alertRepository = MockAlertRepository(), loadMetrics = { throw RuntimeException("fail") })
+        val vm = DashboardViewModel(alertRepository = MockAlertRepository(), cameraRepository = fakeCameraRepo, loadMetrics = { throw RuntimeException("fail") })
         advanceUntilIdle()
         assertEquals(SyncStatus.Error, vm.syncStatus.value)
     }
 
     @Test
     fun `Error message falls back to localised string when exception message is null`() = runTest {
-        val vm = DashboardViewModel(alertRepository = MockAlertRepository(), loadMetrics = { throw RuntimeException(null as String?) })
+        val vm = DashboardViewModel(alertRepository = MockAlertRepository(), cameraRepository = fakeCameraRepo, loadMetrics = { throw RuntimeException(null as String?) })
         advanceUntilIdle()
         val state = vm.uiState.value
         assertIs<DashboardUiState.Error>(state)
@@ -131,7 +150,7 @@ class DashboardViewModelTest {
     @Test
     fun `retry resets to Loading then reaches Success`() = runTest {
         var shouldFail = true
-        val vm = DashboardViewModel(alertRepository = MockAlertRepository(), loadMetrics = {
+        val vm = DashboardViewModel(alertRepository = MockAlertRepository(), cameraRepository = fakeCameraRepo, loadMetrics = {
             if (shouldFail) throw RuntimeException("first fail") else successData
         })
         advanceUntilIdle()
@@ -151,7 +170,7 @@ class DashboardViewModelTest {
         var callCount = 0
         val secondDeferred = CompletableDeferred<DashboardData>()
 
-        val vm = DashboardViewModel(alertRepository = MockAlertRepository(), loadMetrics = {
+        val vm = DashboardViewModel(alertRepository = MockAlertRepository(), cameraRepository = fakeCameraRepo, loadMetrics = {
             if (++callCount == 1) firstLoad.await() else secondDeferred.await()
         })
         advanceUntilIdle()
@@ -168,7 +187,7 @@ class DashboardViewModelTest {
 
     @Test
     fun `retry reaches Error when loadMetrics fails again`() = runTest {
-        val vm = DashboardViewModel(alertRepository = MockAlertRepository(), loadMetrics = { throw RuntimeException("always fail") })
+        val vm = DashboardViewModel(alertRepository = MockAlertRepository(), cameraRepository = fakeCameraRepo, loadMetrics = { throw RuntimeException("always fail") })
         advanceUntilIdle()
         assertIs<DashboardUiState.Error>(vm.uiState.value)
 
@@ -182,7 +201,7 @@ class DashboardViewModelTest {
 
     @Test
     fun `selectTab changes the active tab`() = runTest {
-        val vm = DashboardViewModel(alertRepository = MockAlertRepository(), loadMetrics = { successData })
+        val vm = DashboardViewModel(alertRepository = MockAlertRepository(), cameraRepository = fakeCameraRepo, loadMetrics = { successData })
         vm.selectTab(DashboardTab.Cameras)
         assertEquals(DashboardTab.Cameras, vm.selectedTab.value)
         vm.selectTab(DashboardTab.Alerts)
@@ -195,7 +214,7 @@ class DashboardViewModelTest {
 
     @Test
     fun `selectTab does not affect uiState`() = runTest {
-        val vm = DashboardViewModel(alertRepository = MockAlertRepository(), loadMetrics = { successData })
+        val vm = DashboardViewModel(alertRepository = MockAlertRepository(), cameraRepository = fakeCameraRepo, loadMetrics = { successData })
         advanceUntilIdle()
         val before = vm.uiState.value
         vm.selectTab(DashboardTab.Alerts)

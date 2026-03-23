@@ -36,101 +36,108 @@ object AlertSampleData {
             return listOf(
                 Alert(
                     id = "alert-001",
-                    title = "Possible Crocodile Detected",
-                    message = "High-confidence detection near the south riverbank. Immediate on-site inspection recommended.",
+                    title = "Posible Cocodrilo Detectado",
+                    message = "Detección de alta confianza cerca de la ribera sur. Se recomienda inspección inmediata en sitio.",
                     type = AlertType.POSSIBLE_CROCODILE,
                     priority = AlertPriority.CRITICAL,
                     status = AlertStatus.OPEN,
                     createdAt = now,
                     sourceName = "CAM-12 Río Conchal",
                     isRead = false,
+                    folder = "alertas",
                 ),
                 Alert(
                     id = "alert-002",
-                    title = "Motion Detected Near Riverbank",
-                    message = "Unusual motion pattern in restricted zone. Flagged for review.",
+                    title = "Movimiento Detectado Cerca de la Ribera",
+                    message = "Patrón de movimiento inusual en zona restringida. Marcado para revisión.",
                     type = AlertType.MOTION_DETECTED,
                     priority = AlertPriority.HIGH,
                     status = AlertStatus.IN_PROGRESS,
-                    createdAt = now - 720_000L,                     // 12 min  → today
+                    createdAt = now - 720_000L,                     // 12 min  → hoy
                     sourceName = "CAM-08 Laguna Norte",
                     isRead = false,
+                    folder = "alertas",
                 ),
                 Alert(
                     id = "alert-003",
-                    title = "New Image Captured",
-                    message = "New image uploaded from remote camera. Pending AI analysis.",
+                    title = "Nueva Imagen Capturada",
+                    message = "Nueva imagen subida desde cámara remota. Pendiente de análisis por IA.",
                     type = AlertType.IMAGE_UPLOADED,
                     priority = AlertPriority.MEDIUM,
                     status = AlertStatus.OPEN,
-                    createdAt = now - 2_700_000L,                   // 45 min  → today
+                    createdAt = now - 2_700_000L,                   // 45 min  → hoy
                     sourceName = "CAM-03 Sector Este",
                     isRead = true,
+                    folder = "pre-alertas",
                 ),
                 Alert(
                     id = "alert-004",
-                    title = "Device Communication Warning",
-                    message = "Camera has not reported status in over 2 hours. Check connectivity.",
+                    title = "Advertencia de Comunicación del Dispositivo",
+                    message = "La cámara no ha reportado estado en más de 2 horas. Verificar conectividad.",
                     type = AlertType.SYSTEM_WARNING,
                     priority = AlertPriority.MEDIUM,
                     status = AlertStatus.IN_PROGRESS,
-                    createdAt = now - 9_000_000L,                   // 2.5 hr  → today
+                    createdAt = now - 9_000_000L,                   // 2.5 hr  → hoy
                     sourceName = "CAM-05 Margen Sur",
                     isRead = true,
+                    folder = "pre-alertas",
                 ),
                 Alert(
                     id = "alert-007",
-                    title = "Crocodile Near Access Road",
-                    message = "Animal detected crossing the northern access road. Area closed until inspection.",
+                    title = "Cocodrilo Cerca del Camino de Acceso",
+                    message = "Animal detectado cruzando el camino de acceso norte. Área cerrada hasta inspección.",
                     type = AlertType.POSSIBLE_CROCODILE,
                     priority = AlertPriority.CRITICAL,
                     status = AlertStatus.OPEN,
-                    createdAt = now - 1 * 24 * 3_600_000L,         // 1 day   → this week
+                    createdAt = now - 1 * 24 * 3_600_000L,         // 1 día   → esta semana
                     sourceName = "CAM-02 Acceso Principal",
                     isRead = false,
+                    folder = "alertas",
                 ),
                 Alert(
                     id = "alert-008",
-                    title = "Large Motion Detected at Pond",
-                    message = "Significant movement recorded at the eastern pond perimeter.",
+                    title = "Gran Movimiento Detectado en Laguna",
+                    message = "Movimiento significativo registrado en el perímetro de la laguna este.",
                     type = AlertType.MOTION_DETECTED,
                     priority = AlertPriority.HIGH,
                     status = AlertStatus.IN_PROGRESS,
-                    createdAt = now - 2 * 24 * 3_600_000L,         // 2 days  → this week
+                    createdAt = now - 2 * 24 * 3_600_000L,         // 2 días  → esta semana
                     sourceName = "CAM-09 Laguna Este",
                     isRead = true,
+                    folder = "alertas",
                 ),
                 Alert(
                     id = "alert-009",
-                    title = "Camera Alignment Issue",
-                    message = "Camera field of view has shifted. Manual recalibration required.",
+                    title = "Problema de Alineación de Cámara",
+                    message = "El campo de visión de la cámara se ha desplazado. Se requiere recalibración manual.",
                     type = AlertType.SYSTEM_WARNING,
                     priority = AlertPriority.MEDIUM,
                     status = AlertStatus.OPEN,
-                    createdAt = now - 8 * 24 * 3_600_000L,         // 8 days  → this month
+                    createdAt = now - 8 * 24 * 3_600_000L,         // 8 días  → este mes
                     sourceName = "CAM-07 Zona Oeste",
                     isRead = true,
+                    folder = "pre-alertas",
                 ),
                 Alert(
                     id = "alert-005",
-                    title = "Battery Low on Remote Camera",
-                    message = "Battery level at 8%. Device may go offline within 30 minutes.",
+                    title = "Batería Baja en Cámara Remota",
+                    message = "Nivel de batería al 8%. El dispositivo puede desconectarse en 30 minutos.",
                     type = AlertType.BATTERY_LOW,
                     priority = AlertPriority.LOW,
                     status = AlertStatus.OPEN,
-                    createdAt = now - 3 * 24 * 3_600_000L,         // 3 days  → this week
+                    createdAt = now - 3 * 24 * 3_600_000L,         // 3 días  → esta semana
                     sourceName = "CAM-11 Acceso Norte",
                     isRead = true,
                 ),
                 Alert(
                     id = "alert-006",
-                    title = "Sync Completed Successfully",
-                    message = "All camera records synchronized. 248 captures uploaded.",
+                    title = "Sincronización Completada Exitosamente",
+                    message = "Todos los registros de cámaras sincronizados. 248 capturas subidas.",
                     type = AlertType.SYNC_COMPLETED,
                     priority = AlertPriority.LOW,
                     status = AlertStatus.CLOSED,
-                    createdAt = now - 12 * 24 * 3_600_000L,        // 12 days → this month
-                    sourceName = "System",
+                    createdAt = now - 12 * 24 * 3_600_000L,        // 12 días → este mes
+                    sourceName = "Sistema",
                     isRead = true,
                 ),
             )
