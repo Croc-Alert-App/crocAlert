@@ -13,10 +13,7 @@ class InMemoryAlertLocalDataSource : AlertLocalDataSource {
     override fun selectAll(): Flow<List<AlertDto>> = _alerts
 
     override suspend fun upsertAll(alerts: List<AlertDto>) {
-        // Merge incoming alerts into the existing cache (upsert semantics)
-        val merged = _alerts.value.associateBy { it.id }.toMutableMap()
-        alerts.forEach { merged[it.id] = it }
-        _alerts.value = merged.values.sortedByDescending { it.createdAt }
+        _alerts.value = alerts.sortedByDescending { it.createdAt }
         _lastSyncedAt = Clock.System.now().toEpochMilliseconds()
     }
 
