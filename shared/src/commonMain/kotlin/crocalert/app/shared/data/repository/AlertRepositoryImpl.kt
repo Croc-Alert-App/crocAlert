@@ -80,7 +80,7 @@ class AlertRepositoryImpl(
      * Fetches alerts from the server.
      * [since] = epoch-ms of the newest alert in local cache; null → full fetch.
      */
-    private suspend fun sync(since: Long?) {
+    private suspend fun sync(since: Long? = null) {
         when (val res = remote.getAlerts(since = since)) {
             is ApiResult.Success -> {
                 local.upsertAll(res.data)

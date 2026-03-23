@@ -12,7 +12,8 @@ import io.ktor.server.routing.*
 fun Route.alertRoutes(service: AlertServicePort) {
     route("/alerts") {
         get {
-            call.respond(service.getAll())
+            val since = call.request.queryParameters["since"]?.toLongOrNull()
+            call.respond(service.getAll(since = since))
         }
 
         post {

@@ -17,4 +17,7 @@ interface AlertRepository {
     suspend fun createAlert(alert: Alert): String
     suspend fun updateAlert(alert: Alert)
     suspend fun deleteAlert(alertId: String)
+
+    /** Forces a full re-sync regardless of TTL — called by the global refresh button. */
+    suspend fun refresh()
 }
