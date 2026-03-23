@@ -9,6 +9,7 @@ data class CameraHistoryUiState(
     val received: Int,
     val missing: Int,
     val expected: Int,
+    val expectedPerDay: Int,
     val integrityFlags: Int,
     val captureSlots: List<CaptureSlot>,
     val canGoNext: Boolean,
