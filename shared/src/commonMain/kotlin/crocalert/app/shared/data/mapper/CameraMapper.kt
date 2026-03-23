@@ -9,5 +9,16 @@ fun CameraDto.toModel(): Camera = Camera(
     isActive = isActive,
     siteId = siteId,
     createdAt = createdAt,
-    installedAt = installedAt
+    installedAt = installedAt,
+    expectedImages = expectedImages,
+)
+
+fun Camera.toDto(): CameraDto = CameraDto(
+    id = id,
+    name = name,
+    isActive = isActive,
+    siteId = siteId,
+    createdAt = createdAt,
+    installedAt = installedAt,
+    expectedImages = expectedImages,
 )

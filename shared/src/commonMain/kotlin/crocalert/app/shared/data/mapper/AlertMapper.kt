@@ -22,7 +22,8 @@ fun AlertDto.toModel(): Alert = Alert(
     assignedToUserId = assignedToUserId,
     closedAt = closedAt,
     notes = notes,
-    title = title
+    title = title,
+    folder = folder,
 )
 
 fun Alert.toDto(): AlertDto = AlertDto(
@@ -36,5 +37,6 @@ fun Alert.toDto(): AlertDto = AlertDto(
     assignedToUserId = assignedToUserId,
     closedAt = closedAt,
     notes = notes,
-    title = title
+    title = title,
+    folder = folder,
 )

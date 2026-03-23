@@ -18,4 +18,5 @@ data class Alert(
     val sourceName: String = "",
     val thumbnailUrl: String? = null,
     val isRead: Boolean = false,
+    val folder: String? = null,
 )

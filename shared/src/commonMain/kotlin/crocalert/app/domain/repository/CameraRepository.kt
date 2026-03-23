@@ -12,4 +12,5 @@ interface CameraRepository {
     suspend fun createCamera(camera: Camera): String
     suspend fun updateCamera(camera: Camera)
     suspend fun deleteCamera(cameraId: String)
+    suspend fun refresh()
 }
