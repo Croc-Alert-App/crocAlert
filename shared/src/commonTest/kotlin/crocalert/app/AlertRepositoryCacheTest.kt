@@ -3,9 +3,12 @@ package crocalert.app
 import crocalert.app.model.Alert
 import crocalert.app.shared.data.dto.AlertDto
 import crocalert.app.shared.data.dto.IdResponse
+import crocalert.app.shared.data.local.InMemoryAlertLocalDataSource
 import crocalert.app.shared.data.remote.AlertRemoteDataSource
 import crocalert.app.shared.data.repository.AlertRepositoryImpl
 import crocalert.app.shared.network.ApiResult
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import kotlin.test.*
@@ -27,7 +30,9 @@ class AlertRepositoryCacheTest {
     private val dto2 = AlertDto(id = "a2", title = "Alert 2")
     private val dto3 = AlertDto(id = "a3", title = "Alert 3")
 
-    private fun repo(fake: SequentialFakeRemote) = AlertRepositoryImpl(fake)
+    private fun repo(fake: SequentialFakeRemote) =
+        AlertRepositoryImpl(fake, InMemoryAlertLocalDataSource(),
+            coroutineScope = CoroutineScope(Dispatchers.Unconfined))
 
     // ── Sequential create invalidation ────────────────────────────────────────
 
