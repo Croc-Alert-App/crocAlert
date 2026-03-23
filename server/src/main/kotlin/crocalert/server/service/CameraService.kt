@@ -14,8 +14,8 @@ class CameraService : CameraServicePort {
     private val imagesPerDayCol by lazy { db.collection("images_per_day") }
     private fun DocumentSnapshot.toCameraDto(): CameraDto {
 
-        val created = getTimestamp("createdAt")?.toDate()?.time
-        val installed = getTimestamp("installedAt")?.toDate()?.time
+        val created   = getTimestamp("createdAt")?.toDate()?.time   ?: getLong("createdAt")
+        val installed = getTimestamp("installedAt")?.toDate()?.time ?: getLong("installedAt")
 
         return CameraDto(
             id = id,
@@ -24,7 +24,7 @@ class CameraService : CameraServicePort {
             siteId = (get("siteId") as? DocumentReference)?.path ?: getString("siteId"),
             createdAt = created,
             installedAt = installed,
-            expectedImages = getLong("expectedImages")?.toInt()
+            expectedImages = (getLong("expectedImages") ?: getLong("excpectedImages"))?.toInt()
         )
     }
 
@@ -78,30 +78,30 @@ class CameraService : CameraServicePort {
 
         if (!current.exists()) return false
 
-        val data = mutableMapOf<String, Any?>(
-            "name" to dto.name,
+        // Use a non-null map so ref.update() doesn't reject null entries.
+        // Nullable fields are only included when they have a value — this preserves
+        // any existing Firestore fields we didn't read (e.g. legacy typo fields).
+        val data = mutableMapOf<String, Any>(
+            "name"     to dto.name,
             "isActive" to dto.isActive,
-            "siteId" to dto.siteId,
-            "expectedImages" to dto.expectedImages
         )
 
+        dto.siteId?.let          { data["siteId"] = it }
+        dto.expectedImages?.let  { data["expectedImages"] = it }
+
         dto.createdAt?.let {
-            data["createdAt"] =
-                Timestamp.ofTimeSecondsAndNanos(
-                    it / 1000,
-                    ((it % 1000) * 1_000_000).toInt()
-                )
+            data["createdAt"] = Timestamp.ofTimeSecondsAndNanos(
+                it / 1000, ((it % 1000) * 1_000_000).toInt()
+            )
         }
 
         dto.installedAt?.let {
-            data["installedAt"] =
-                Timestamp.ofTimeSecondsAndNanos(
-                    it / 1000,
-                    ((it % 1000) * 1_000_000).toInt()
-                )
+            data["installedAt"] = Timestamp.ofTimeSecondsAndNanos(
+                it / 1000, ((it % 1000) * 1_000_000).toInt()
+            )
         }
 
-        ref.set(data).get()
+        ref.update(data).get()
 
         return true
     }
