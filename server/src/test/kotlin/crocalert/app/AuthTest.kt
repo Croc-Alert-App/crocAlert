@@ -25,7 +25,7 @@ class AuthTest {
     private val validKey = "test-api-key-1234"
 
     private val emptyAlertService = object : AlertServicePort {
-        override suspend fun getAll() = emptyList<AlertDto>()
+        override suspend fun getAll(since: Long?) = emptyList<AlertDto>()
         override suspend fun getById(id: String) = null
         override suspend fun create(dto: AlertDto) = "new-id"
         override suspend fun update(id: String, dto: AlertDto) = false

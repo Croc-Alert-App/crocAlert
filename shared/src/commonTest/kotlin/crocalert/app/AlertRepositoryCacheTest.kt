@@ -220,7 +220,7 @@ private class SequentialFakeRemote(
     var getCallCount = 0
         private set
 
-    override suspend fun getAlerts(): ApiResult<List<AlertDto>> {
+    override suspend fun getAlerts(since: Long?): ApiResult<List<AlertDto>> {
         val result = getSequence.getOrElse(getCallCount) { getSequence.last() }
         getCallCount++
         return result

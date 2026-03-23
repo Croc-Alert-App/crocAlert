@@ -24,7 +24,7 @@ class ServerErrorHandlingTest {
     private class FailingAlertService(
         private val message: String = "Firebase unavailable"
     ) : AlertServicePort {
-        override suspend fun getAll(): List<AlertDto> = error(message)
+        override suspend fun getAll(since: Long?): List<AlertDto> = error(message)
         override suspend fun getById(id: String): AlertDto? = error(message)
         override suspend fun create(dto: AlertDto): String = error(message)
         override suspend fun update(id: String, dto: AlertDto): Boolean = error(message)

@@ -23,7 +23,7 @@ class AlertsRouteErrorTest {
     private class FakeAlertService(
         private val alerts: MutableList<AlertDto> = mutableListOf()
     ) : AlertServicePort {
-        override suspend fun getAll() = alerts.toList()
+        override suspend fun getAll(since: Long?) = alerts.toList()
         override suspend fun getById(id: String) = alerts.firstOrNull { it.id == id }
         override suspend fun create(dto: AlertDto): String {
             val id = "generated-id"

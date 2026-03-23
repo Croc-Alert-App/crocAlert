@@ -1,5 +1,6 @@
 package crocalert.app
 
+import crocalert.app.shared.data.dto.CameraDailyStatsDto
 import crocalert.app.shared.data.dto.CameraDto
 import crocalert.app.shared.data.dto.CaptureDto
 import crocalert.app.shared.data.local.InMemoryCameraLocalDataSource
@@ -240,4 +241,10 @@ private class FakeCameraRemoteDataSource(
 
     override suspend fun updateCamera(id: String, dto: CameraDto): ApiResult<Unit> =
         updateCameraResult.also { lastUpdatedDto = dto }
+
+    override suspend fun getDailyStats(cameraId: String, date: String): ApiResult<CameraDailyStatsDto> =
+        ApiResult.Error("not implemented", 501)
+
+    override suspend fun getDailyStatsForAll(date: String): ApiResult<List<CameraDailyStatsDto>> =
+        ApiResult.Success(emptyList())
 }

@@ -277,7 +277,7 @@ private class FakeAlertRemoteDataSource(
 
     var getCallCount = 0
 
-    override suspend fun getAlerts(): ApiResult<List<AlertDto>> =
+    override suspend fun getAlerts(since: Long?): ApiResult<List<AlertDto>> =
         getAlertsResult.also { getCallCount++ }
 
     override suspend fun getAlert(id: String): ApiResult<AlertDto> =
