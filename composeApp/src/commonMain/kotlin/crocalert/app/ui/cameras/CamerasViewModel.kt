@@ -159,8 +159,8 @@ class CamerasViewModel(
                     camera.id.contains(query, ignoreCase = true)
             }
             .let { list ->
-                if (descending) list.sortedByDescending { it.name }
-                else list.sortedBy { it.name }
+                if (descending) list.sortedByDescending { it.status.severity }
+                else list.sortedBy { it.status.severity }
             }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
