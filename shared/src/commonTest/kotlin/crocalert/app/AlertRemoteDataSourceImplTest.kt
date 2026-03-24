@@ -171,4 +171,13 @@ class AlertRemoteDataSourceImplTest {
         impl(client, apiKey = "").getAlerts()
         assertNull(captured.first()["X-Api-Key"])
     }
+
+    // ── baseUrl validation (P14) ──────────────────────────────────────────────
+
+    @Test
+    fun `constructor throws IllegalArgumentException when baseUrl is blank`() {
+        assertFailsWith<IllegalArgumentException> {
+            AlertRemoteDataSourceImpl(buildClient(), baseUrl = "")
+        }
+    }
 }

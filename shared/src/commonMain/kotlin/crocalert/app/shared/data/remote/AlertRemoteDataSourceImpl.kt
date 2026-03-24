@@ -24,6 +24,10 @@ class AlertRemoteDataSourceImpl(
     private val apiKey: String = ApiRoutes.API_KEY,
 ) : AlertRemoteDataSource {
 
+    init {
+        require(baseUrl.isNotBlank()) { "baseUrl must not be blank" }
+    }
+
     private val alertsUrl = ApiRoutes.alertsUrl(baseUrl)
 
     // Adds X-API-Key header when the key is configured (server auth guard enabled)
