@@ -2,6 +2,7 @@ package crocalert.app
 
 import crocalert.app.model.AlertPriority
 import crocalert.app.model.AlertStatus
+import crocalert.app.model.AlertType
 import crocalert.app.shared.data.dto.AlertDto
 import crocalert.app.shared.data.mapper.toDto
 import crocalert.app.shared.data.mapper.toModel
@@ -104,6 +105,32 @@ class AlertMapperTest {
     fun `toDto encodes priority as its enum name`() {
         val model = AlertDto(priority = "CRITICAL").toModel()
         assertEquals("CRITICAL", model.toDto().priority)
+    }
+
+    // ── type derived from folder (P12) ───────────────────────────────────────
+
+    @Test
+    fun `folder alertas maps to POSSIBLE_CROCODILE`() {
+        val model = AlertDto(folder = "alertas").toModel()
+        assertEquals(AlertType.POSSIBLE_CROCODILE, model.type)
+    }
+
+    @Test
+    fun `folder ALERTAS (uppercase) maps to POSSIBLE_CROCODILE (case-insensitive)`() {
+        val model = AlertDto(folder = "ALERTAS").toModel()
+        assertEquals(AlertType.POSSIBLE_CROCODILE, model.type)
+    }
+
+    @Test
+    fun `null folder maps to IMAGE_UPLOADED`() {
+        val model = AlertDto(folder = null).toModel()
+        assertEquals(AlertType.IMAGE_UPLOADED, model.type)
+    }
+
+    @Test
+    fun `unknown folder string maps to IMAGE_UPLOADED`() {
+        val model = AlertDto(folder = "captures").toModel()
+        assertEquals(AlertType.IMAGE_UPLOADED, model.type)
     }
 
     // ── Scalar fields pass through unchanged ──────────────────────────────────
