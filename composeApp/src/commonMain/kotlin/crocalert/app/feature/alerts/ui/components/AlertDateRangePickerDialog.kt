@@ -34,7 +34,7 @@ fun AlertDateRangePickerDialog(
     val state = rememberDateRangePickerState(
         initialSelectedStartDateMillis = initialRange?.startMs,
         initialSelectedEndDateMillis = initialRange?.endMs,
-        initialDisplayMode = DisplayMode.Input,
+        initialDisplayMode = DisplayMode.Picker,
     )
 
     val canConfirm = state.selectedStartDateMillis != null && state.selectedEndDateMillis != null

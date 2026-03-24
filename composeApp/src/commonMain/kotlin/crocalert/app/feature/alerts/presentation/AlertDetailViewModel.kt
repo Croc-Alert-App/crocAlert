@@ -13,8 +13,10 @@ import crocalert.app.shared.network.ApiResult
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 
 sealed interface AlertDetailUiState {
     data object Loading : AlertDetailUiState
@@ -49,8 +51,12 @@ class AlertDetailViewModel(
     private fun load() {
         viewModelScope.launch {
             try {
-                val alert = alertRepository.observeAlert(alertId).first()
-                    ?: throw IllegalArgumentException("Alerta $alertId no encontrada")
+                // observeAlert() emits the local cache immediately (may be null on cold start)
+                // then re-emits once syncIfStale() populates it. filterNotNull().first()
+                // waits for the first non-null emission rather than racing the background sync.
+                val alert = withTimeoutOrNull(10_000L) {
+                    alertRepository.observeAlert(alertId).filterNotNull().first()
+                } ?: throw IllegalArgumentException("Alerta $alertId no encontrada")
 
                 val camera: Camera? = if (alert.cameraId.isNotBlank()) {
                     cameraRepository.observeCamera(alert.cameraId).first()

@@ -15,7 +15,9 @@ class AlertSyncWorker(
             AppModule.syncAlerts()
             Result.success()
         } catch (e: Exception) {
-            Result.retry()
+            // After 3 attempts assume unrecoverable (auth failure, init error, etc.)
+            // and surface as a permanent failure rather than retrying indefinitely.
+            if (runAttemptCount >= 3) Result.failure() else Result.retry()
         }
     }
 }

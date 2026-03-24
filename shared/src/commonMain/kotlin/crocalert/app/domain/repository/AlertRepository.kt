@@ -2,6 +2,7 @@ package crocalert.app.domain.repository
 
 import crocalert.app.model.Alert
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.StateFlow
 
 interface AlertRepository {
     fun observeAlerts(): Flow<List<Alert>>
@@ -12,7 +13,7 @@ interface AlertRepository {
      * succeeded on the server but the subsequent GET could not update the local cache).
      * Resets to null after the next successful refresh.
      */
-    val lastRefreshError: Flow<String?>
+    val lastRefreshError: StateFlow<String?>
 
     suspend fun createAlert(alert: Alert): String
     suspend fun updateAlert(alert: Alert)

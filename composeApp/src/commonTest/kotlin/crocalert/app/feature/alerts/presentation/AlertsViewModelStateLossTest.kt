@@ -7,6 +7,9 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -32,7 +35,7 @@ class AlertsViewModelStateLossTest {
         override suspend fun createAlert(alert: Alert) = alert.id
         override suspend fun updateAlert(alert: Alert) {}
         override suspend fun deleteAlert(alertId: String) {}
-        override val lastRefreshError: Flow<String?> = flowOf(null)
+        override val lastRefreshError: StateFlow<String?> = MutableStateFlow(null).asStateFlow()
         override suspend fun refresh() {}
     }
 

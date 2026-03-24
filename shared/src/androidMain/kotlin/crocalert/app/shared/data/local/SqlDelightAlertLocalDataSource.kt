@@ -34,6 +34,27 @@ class SqlDelightAlertLocalDataSource(
                 }
             }
 
+    override suspend fun clearAndUpsertAll(alerts: List<AlertDto>) = withContext(Dispatchers.IO) {
+        val now = Clock.System.now().toEpochMilliseconds()
+        queries.transaction {
+            queries.deleteAll()
+            alerts.forEach { dto ->
+                queries.upsertAll(
+                    id            = dto.id,
+                    capture_id    = dto.captureId,
+                    camera_id     = dto.cameraId,
+                    ai_confidence = dto.aiConfidence?.toDouble(),
+                    created_at    = dto.createdAt,
+                    status        = dto.status,
+                    priority      = dto.priority,
+                    title         = dto.title,
+                    folder        = dto.folder,
+                    synced_at     = now,
+                )
+            }
+        }
+    }
+
     override suspend fun upsertAll(alerts: List<AlertDto>) = withContext(Dispatchers.IO) {
         val now = Clock.System.now().toEpochMilliseconds()
         queries.transaction {

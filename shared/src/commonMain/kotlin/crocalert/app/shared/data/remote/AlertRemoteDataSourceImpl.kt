@@ -20,15 +20,19 @@ import io.ktor.http.contentType
 
 class AlertRemoteDataSourceImpl(
     private val client: HttpClient,
-    baseUrl: String
+    baseUrl: String,
+    private val apiKey: String = ApiRoutes.API_KEY,
 ) : AlertRemoteDataSource {
+
+    init {
+        require(baseUrl.isNotBlank()) { "baseUrl must not be blank" }
+    }
 
     private val alertsUrl = ApiRoutes.alertsUrl(baseUrl)
 
     // Adds X-API-Key header when the key is configured (server auth guard enabled)
     private fun HttpRequestBuilder.addAuth() {
-        val key = ApiRoutes.API_KEY
-        if (key.isNotBlank()) header("X-API-Key", key)
+        if (apiKey.isNotBlank()) header("X-API-Key", apiKey)
     }
 
     override suspend fun getAlerts(since: Long?): ApiResult<List<AlertDto>> =
