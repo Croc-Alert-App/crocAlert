@@ -20,6 +20,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.Clock
 import kotlin.time.Duration.Companion.minutes
 
@@ -32,6 +34,9 @@ class AlertRepositoryImpl(
 
     private val _lastRefreshError = MutableStateFlow<String?>(null)
     override val lastRefreshError: StateFlow<String?> = _lastRefreshError.asStateFlow()
+
+    // Prevents concurrent syncIfStale() calls (one per subscriber) from firing parallel network requests.
+    private val syncMutex = Mutex()
 
     override fun observeAlerts(): Flow<List<Alert>> =
         local.selectAll()
@@ -76,14 +81,20 @@ class AlertRepositoryImpl(
     internal suspend fun forceSync() = sync(since = null)
 
     private suspend fun syncIfStale() {
-        val ttl = syncPrefs.first().alertsTtlMinutes
-        val staleThreshold = Clock.System.now().minus(ttl.minutes).toEpochMilliseconds()
-        val lastSync = local.lastSyncedAt() ?: 0L
-        if (lastSync < staleThreshold) {
-            // Incremental: only fetch alerts newer than what we have cached.
-            // Falls back to full fetch (null) when the local cache is empty.
-            val since = local.latestCreatedAt()
-            sync(since = since)
+        try {
+            syncMutex.withLock {
+                val ttl = syncPrefs.first().alertsTtlMinutes
+                val staleThreshold = Clock.System.now().minus(ttl.minutes).toEpochMilliseconds()
+                val lastSync = local.lastSyncedAt() ?: 0L
+                if (lastSync < staleThreshold) {
+                    // Incremental: only fetch alerts newer than what we have cached.
+                    // Falls back to full fetch (null) when the local cache is empty.
+                    val since = local.latestCreatedAt()
+                    sync(since = since)
+                }
+            }
+        } catch (e: Exception) {
+            _lastRefreshError.value = e.message ?: "Sync check failed"
         }
     }
 

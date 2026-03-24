@@ -317,6 +317,23 @@ class AlertRepositoryImplTest {
         r.updateAlert(sampleAlert.copy(status = AlertStatus.OPEN, title = "New title"))
     }
 
+    // ── syncIfStale mutex (P7) ────────────────────────────────────────────────
+
+    @Test
+    fun `concurrent observeAlerts calls do not fire duplicate network requests`() = runTest {
+        val fake = FakeAlertRemoteDataSource(
+            getAlertsResult = ApiResult.Success(listOf(sampleDto))
+        )
+        val r = repo(fake)
+        // Collect from two independent observers simultaneously — cache starts empty so both
+        // would normally trigger syncIfStale. Mutex ensures only one network call fires.
+        r.observeAlerts().first()
+        r.observeAlerts().first()
+        // With Mutex: second observer sees fresh cache (lastSyncedAt set), skips sync.
+        // Without Mutex: two concurrent syncs → getCallCount == 2.
+        assertEquals(1, fake.getCallCount)
+    }
+
     // ── sync eviction (P2) ────────────────────────────────────────────────────
 
     @Test
