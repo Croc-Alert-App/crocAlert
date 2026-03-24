@@ -16,12 +16,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.ArrowDownward
-import androidx.compose.material.icons.outlined.ArrowUpward
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -37,10 +36,12 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -57,6 +58,7 @@ import crocalert.app.feature.alerts.ui.components.AlertDateRangePickerDialog
 import crocalert.app.feature.alerts.ui.components.AlertListItem
 import crocalert.app.feature.alerts.ui.components.ErrorState
 import crocalert.app.feature.alerts.ui.components.LoadingState
+import crocalert.app.ui.components.SortButton
 import crocalert.app.model.Alert
 import crocalert.app.theme.CrocAmber
 import crocalert.app.theme.CrocBlack
@@ -64,6 +66,7 @@ import crocalert.app.theme.CrocBlue
 import crocalert.app.theme.CrocNeutralLight
 import crocalert.app.theme.CrocWhite
 import crocalert.app.ui.components.EmptyStateView
+import kotlinx.coroutines.launch
 import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
@@ -95,6 +98,13 @@ fun AlertListScreen(
 
     var activeTab by remember { mutableStateOf(AlertTab.PRE_ALERTS) }
     var showDateRangePicker by remember { mutableStateOf(false) }
+    val listState = rememberLazyListState()
+    val scope = rememberCoroutineScope()
+
+    // Scroll to top whenever the sort direction changes
+    LaunchedEffect(sortDirection) {
+        scope.launch { listState.scrollToItem(0) }
+    }
 
     val successAlerts = (uiState as? AlertsUiState.Success)?.alerts
     val unreadCount = successAlerts?.count { !it.isRead } ?: 0
@@ -158,8 +168,8 @@ fun AlertListScreen(
                     modifier = Modifier.weight(1f),
                 )
                 SortButton(
-                    direction = sortDirection,
-                    onClick = viewModel::toggleSort,
+                    descending = sortDirection == SortDirection.DESC,
+                    onToggle = viewModel::toggleSort,
                 )
             }
         }
@@ -207,6 +217,7 @@ fun AlertListScreen(
                     )
                 } else {
                     LazyColumn(
+                        state = listState,
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -235,29 +246,6 @@ fun AlertListScreen(
 }
 
 // ── Sub-composables ───────────────────────────────────────────────────────────
-
-@Composable
-private fun SortButton(direction: SortDirection, onClick: () -> Unit) {
-    OutlinedButton(
-        onClick = onClick,
-        shape = RoundedCornerShape(8.dp),
-        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
-    ) {
-        Icon(
-            imageVector = if (direction == SortDirection.DESC) Icons.Outlined.ArrowDownward
-                          else Icons.Outlined.ArrowUpward,
-            contentDescription = direction.label,
-            modifier = Modifier.size(14.dp),
-            tint = CrocBlue,
-        )
-        Spacer(Modifier.width(4.dp))
-        Text(
-            text = if (direction == SortDirection.DESC) "Reciente" else "Antiguo",
-            style = MaterialTheme.typography.labelSmall,
-            color = CrocBlue,
-        )
-    }
-}
 
 @Composable
 private fun AlertPresetFilterChips(
@@ -297,6 +285,7 @@ private fun AlertPresetFilterChips(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun CustomRangeBar(
     isActive: Boolean,

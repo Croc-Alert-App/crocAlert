@@ -20,8 +20,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.ArrowDownward
-import androidx.compose.material.icons.outlined.ArrowUpward
 import androidx.compose.material.icons.outlined.KeyboardArrowDown
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Videocam
@@ -49,10 +47,12 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import crocalert.app.theme.CrocBlue
 import crocalert.app.theme.CrocNeutralLight
 import crocalert.app.theme.CrocWhite
+
 import crocalert.app.ui.cameras.components.CameraCard
 import crocalert.app.ui.cameras.components.CameraFormDialog
 import crocalert.app.ui.cameras.components.DeletedCameraCard
 import crocalert.app.ui.components.EmptyStateView
+import crocalert.app.ui.components.SortButton
 
 @Composable
 fun CamerasScreen(viewModel: CamerasViewModel = viewModel { CamerasViewModel() }) {
@@ -125,7 +125,7 @@ fun CamerasScreen(viewModel: CamerasViewModel = viewModel { CamerasViewModel() }
                     onSelect = viewModel::onVisibilityFilterSelect,
                     modifier = Modifier.weight(1f),
                 )
-                CameraSortButton(
+                SortButton(
                     descending = sortDescending,
                     onToggle = viewModel::toggleSort,
                     modifier = Modifier.weight(1f),
@@ -261,35 +261,6 @@ private fun CameraVisibilityDropdown(
                 )
             }
         }
-    }
-}
-
-@Composable
-private fun CameraSortButton(
-    descending: Boolean,
-    onToggle: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Button(
-        onClick = onToggle,
-        shape = RoundedCornerShape(8.dp),
-        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
-        modifier = modifier.fillMaxWidth(),
-        colors = ButtonDefaults.buttonColors(containerColor = CrocBlue),
-    ) {
-        Text(
-            text = "Orden",
-            style = MaterialTheme.typography.labelMedium,
-            color = CrocWhite,
-        )
-        Spacer(Modifier.width(6.dp))
-        Icon(
-            imageVector = if (descending) Icons.Outlined.ArrowDownward
-                          else Icons.Outlined.ArrowUpward,
-            contentDescription = null,
-            modifier = Modifier.size(16.dp),
-            tint = CrocWhite,
-        )
     }
 }
 
