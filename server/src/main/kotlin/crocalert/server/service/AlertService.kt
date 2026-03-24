@@ -47,7 +47,7 @@ class AlertService : AlertServicePort {
     }
 
     override suspend fun update(id: String, dto: AlertDto): Boolean {
-        val ref = col.document(id)
+        val ref = capturesCol.document(id)
         return withContext(Dispatchers.IO) {
             db.runTransaction { transaction ->
                 val snapshot = transaction.get(ref).get()
@@ -68,7 +68,7 @@ class AlertService : AlertServicePort {
     }
 
     override suspend fun delete(id: String): Boolean {
-        val ref = col.document(id)
+        val ref = capturesCol.document(id)
         return withContext(Dispatchers.IO) {
             db.runTransaction { transaction ->
                 if (!transaction.get(ref).get().exists()) return@runTransaction false
