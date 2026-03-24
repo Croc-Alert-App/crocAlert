@@ -1,7 +1,9 @@
 package crocalert.app.shared.data.repository
 
+import crocalert.app.domain.AlertStatusValidator
 import crocalert.app.domain.repository.AlertRepository
 import crocalert.app.model.Alert
+import crocalert.app.model.AlertStatus
 import crocalert.app.shared.data.local.AlertLocalDataSource
 import crocalert.app.shared.data.mapper.toDto
 import crocalert.app.shared.data.mapper.toModel
@@ -49,6 +51,15 @@ class AlertRepositoryImpl(
 
     override suspend fun updateAlert(alert: Alert) {
         val id = alert.id.ifBlank { throw IllegalArgumentException("updateAlert necesita id") }
+        // R-01: validate status transition against current cached state before hitting the network.
+        val currentDto = local.selectAll().first().firstOrNull { it.id == id }
+        if (currentDto != null) {
+            val currentStatus = runCatching { AlertStatus.valueOf(currentDto.status) }
+                .getOrElse { AlertStatus.OPEN }
+            if (currentStatus != alert.status) {
+                AlertStatusValidator.requireValidTransition(currentStatus, alert.status)
+            }
+        }
         remote.updateAlert(id, alert.toDto()).getOrThrow()
         sync()
     }
@@ -83,7 +94,9 @@ class AlertRepositoryImpl(
     private suspend fun sync(since: Long? = null) {
         when (val res = remote.getAlerts(since = since)) {
             is ApiResult.Success -> {
-                local.upsertAll(res.data)
+                // Full sync (since=null) replaces entire cache so server-side deletions propagate.
+                // Incremental sync (since≠null) merges to preserve older cached records.
+                if (since == null) local.clearAndUpsertAll(res.data) else local.upsertAll(res.data)
                 _lastRefreshError.value = null
             }
             is ApiResult.Error -> _lastRefreshError.value = res.message

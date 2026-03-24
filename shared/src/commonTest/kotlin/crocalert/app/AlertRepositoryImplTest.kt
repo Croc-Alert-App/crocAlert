@@ -239,6 +239,124 @@ class AlertRepositoryImplTest {
         }
     }
 
+    // ── updateAlert — status validation (P3) ──────────────────────────────────
+
+    @Test
+    fun `updateAlert allows valid transition OPEN to IN_PROGRESS`() = runTest {
+        val fake = FakeAlertRemoteDataSource(
+            getAlertsResult = ApiResult.Success(listOf(sampleDto)),  // status = "OPEN"
+            updateResult = ApiResult.Success(Unit)
+        )
+        val r = repo(fake)
+        r.observeAlerts().first()  // populate cache with OPEN alert
+        // Should not throw
+        r.updateAlert(sampleAlert.copy(status = AlertStatus.IN_PROGRESS))
+    }
+
+    @Test
+    fun `updateAlert allows valid transition OPEN to CLOSED`() = runTest {
+        val fake = FakeAlertRemoteDataSource(
+            getAlertsResult = ApiResult.Success(listOf(sampleDto)),
+            updateResult = ApiResult.Success(Unit)
+        )
+        val r = repo(fake)
+        r.observeAlerts().first()
+        r.updateAlert(sampleAlert.copy(status = AlertStatus.CLOSED))
+    }
+
+    @Test
+    fun `updateAlert rejects CLOSED to OPEN transition (R-01)`() = runTest {
+        val closedDto = sampleDto.copy(status = "CLOSED")
+        val fake = FakeAlertRemoteDataSource(
+            getAlertsResult = ApiResult.Success(listOf(closedDto)),
+            updateResult = ApiResult.Success(Unit)
+        )
+        val r = repo(fake)
+        r.observeAlerts().first()  // cache has CLOSED alert
+        assertFailsWith<IllegalStateException> {
+            r.updateAlert(sampleAlert.copy(status = AlertStatus.OPEN))
+        }
+    }
+
+    @Test
+    fun `updateAlert rejects IN_PROGRESS to OPEN transition (R-01)`() = runTest {
+        val inProgressDto = sampleDto.copy(status = "IN_PROGRESS")
+        val fake = FakeAlertRemoteDataSource(
+            getAlertsResult = ApiResult.Success(listOf(inProgressDto)),
+            updateResult = ApiResult.Success(Unit)
+        )
+        val r = repo(fake)
+        r.observeAlerts().first()
+        assertFailsWith<IllegalStateException> {
+            r.updateAlert(sampleAlert.copy(status = AlertStatus.OPEN))
+        }
+    }
+
+    @Test
+    fun `updateAlert skips validation when alert not in local cache`() = runTest {
+        // Alert not in local cache → no cached status to validate against → passes through
+        val fake = FakeAlertRemoteDataSource(
+            getAlertsResult = ApiResult.Success(emptyList()),
+            updateResult = ApiResult.Success(Unit)
+        )
+        val r = repo(fake)
+        r.observeAlerts().first()  // empty cache
+        // Any status allowed when we have no cached state to compare against
+        r.updateAlert(sampleAlert.copy(status = AlertStatus.OPEN))
+    }
+
+    @Test
+    fun `updateAlert with unchanged status (same-to-same) skips validation and succeeds`() = runTest {
+        val fake = FakeAlertRemoteDataSource(
+            getAlertsResult = ApiResult.Success(listOf(sampleDto)),  // status = "OPEN"
+            updateResult = ApiResult.Success(Unit)
+        )
+        val r = repo(fake)
+        r.observeAlerts().first()
+        // Same status → no transition to validate → title update should succeed
+        r.updateAlert(sampleAlert.copy(status = AlertStatus.OPEN, title = "New title"))
+    }
+
+    // ── sync eviction (P2) ────────────────────────────────────────────────────
+
+    @Test
+    fun `full sync evicts deleted records from cache`() = runTest {
+        val dto2 = sampleDto.copy(id = "alert-2", title = "Second")
+        val fake = FakeAlertRemoteDataSource(
+            getAlertsResult = ApiResult.Success(listOf(sampleDto, dto2))
+        )
+        val r = repo(fake)
+        r.observeAlerts().first()  // cache: [alert-1, alert-2]
+        assertEquals(2, r.observeAlerts().first().size)
+
+        // Server deletes alert-2 — next full sync (since=null) should evict it
+        fake.getAlertsResult = ApiResult.Success(listOf(sampleDto))
+        r.refresh()  // calls sync(since=null) → clearAndUpsertAll
+
+        val after = r.observeAlerts().first()
+        assertEquals(1, after.size)
+        assertEquals("alert-1", after[0].id)
+    }
+
+    @Test
+    fun `post-mutation full sync reflects server state exactly (server-deleted records are evicted)`() = runTest {
+        val dto2 = sampleDto.copy(id = "alert-2", title = "Second")
+        val fake = FakeAlertRemoteDataSource(
+            getAlertsResult = ApiResult.Success(listOf(sampleDto, dto2)),
+            updateResult = ApiResult.Success(Unit)
+        )
+        val r = repo(fake)
+        r.observeAlerts().first()              // cache: [alert-1, alert-2]
+
+        // Server drops alert-2 (deleted); next full sync should evict it
+        fake.getAlertsResult = ApiResult.Success(listOf(sampleDto))
+        r.updateAlert(sampleAlert.copy(title = "Updated"))  // triggers full sync
+
+        val after = r.observeAlerts().first()
+        assertEquals(1, after.size, "Full sync must evict alert-2 which is absent from server response")
+        assertEquals("alert-1", after[0].id)
+    }
+
     // ── deleteAlert ───────────────────────────────────────────────────────────
 
     @Test
