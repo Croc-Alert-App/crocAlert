@@ -4,8 +4,9 @@ import crocalert.app.domain.repository.AlertRepository
 import crocalert.app.model.Alert
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.flowOf
 
 /**
  * Phase 1 mock implementation of [AlertRepository].
@@ -24,7 +25,7 @@ class MockAlertRepository : AlertRepository {
 
     private val alertsFlow = MutableStateFlow(AlertSampleData.alerts)
 
-    override val lastRefreshError: Flow<String?> = flowOf(null)
+    override val lastRefreshError: StateFlow<String?> = MutableStateFlow(null).asStateFlow()
 
     override fun observeAlerts(): Flow<List<Alert>> = alertsFlow
 

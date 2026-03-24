@@ -88,8 +88,8 @@ class AlertRepositoryImpl(
                 val lastSync = local.lastSyncedAt() ?: 0L
                 if (lastSync < staleThreshold) {
                     // Incremental: only fetch alerts newer than what we have cached.
-                    // Falls back to full fetch (null) when the local cache is empty.
-                    val since = local.latestCreatedAt()
+                    // Falls back to full fetch (null) when the local cache is empty or latestCreatedAt=0.
+                    val since = local.latestCreatedAt()?.takeIf { it > 0L }
                     sync(since = since)
                 }
             }
@@ -107,8 +107,12 @@ class AlertRepositoryImpl(
             is ApiResult.Success -> {
                 // Full sync (since=null) replaces entire cache so server-side deletions propagate.
                 // Incremental sync (since≠null) merges to preserve older cached records.
-                if (since == null) local.clearAndUpsertAll(res.data) else local.upsertAll(res.data)
-                _lastRefreshError.value = null
+                try {
+                    if (since == null) local.clearAndUpsertAll(res.data) else local.upsertAll(res.data)
+                    _lastRefreshError.value = null
+                } catch (e: Exception) {
+                    _lastRefreshError.value = e.message ?: "Cache write failed"
+                }
             }
             is ApiResult.Error -> _lastRefreshError.value = res.message
         }
