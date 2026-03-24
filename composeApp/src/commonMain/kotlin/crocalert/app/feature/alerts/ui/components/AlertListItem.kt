@@ -36,6 +36,9 @@ import crocalert.app.theme.CrocBlue
 import crocalert.app.theme.CrocNeutralDark
 import crocalert.app.theme.CrocWhite
 import kotlinx.datetime.Clock
+import kotlinx.datetime.Instant
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 
 /**
  * A single alert card.
@@ -45,8 +48,9 @@ import kotlinx.datetime.Clock
  *  MEDIUM           →  CrocBlue   →  "Pre-Alerta" badge
  *  LOW              →  neutral    →  "Info" badge
  *
- * Unread alerts receive a brighter card surface + bold title + small accent dot.
- * Read alerts are shown on the muted surfaceVariant background.
+ * Title is derived from the alert type (human-readable).
+ * The raw filename is shown as a subtitle.
+ * Date is shown as "23 Mar · 03:36" alongside the relative time.
  */
 @Composable
 fun AlertListItem(
@@ -75,6 +79,8 @@ fun AlertListItem(
         if (alert.isRead) MaterialTheme.colorScheme.surfaceVariant
         else MaterialTheme.colorScheme.surface
 
+    val displayTitle = alert.alertDisplayTitle()
+
     Card(
         modifier = modifier.fillMaxWidth().clickable { onClick() },
         shape = RoundedCornerShape(8.dp),
@@ -102,11 +108,11 @@ fun AlertListItem(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
-                        text = alert.title,
+                        text = displayTitle,
                         style = MaterialTheme.typography.titleMedium,
-                        fontWeight = if (!alert.isRead) FontWeight.Bold else FontWeight.Normal,
+                        fontWeight = if (!alert.isRead) FontWeight.Bold else FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onSurface,
-                        maxLines = 2,
+                        maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f),
                     )
@@ -121,16 +127,33 @@ fun AlertListItem(
                     }
                 }
 
+                // ── Filename subtitle ──────────────────────────────────────
+                if (alert.title.isNotBlank()) {
+                    Spacer(Modifier.height(2.dp))
+                    Text(
+                        text = alert.title,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+
                 Spacer(Modifier.height(6.dp))
 
                 // ── Meta info ─────────────────────────────────────────────
+                val cameraLabel = when {
+                    alert.sourceName.isNotBlank() -> alert.sourceName
+                    alert.cameraId.isNotBlank() -> alert.cameraId
+                    else -> "N/D"
+                }
                 Text(
-                    text = "Cámara: ${alert.sourceName}",
+                    text = "Cámara: $cameraLabel",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Text(
-                    text = formatRelativeTime(alert.createdAt),
+                    text = buildDateLine(alert.createdAt),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -169,6 +192,45 @@ fun AlertListItem(
             }
         }
     }
+}
+
+/**
+ * Best-effort camera name for the card title.
+ *
+ * Priority:
+ * 1. sourceName (resolved display name)
+ * 2. cameraId (raw id from Firestore)
+ * 3. Name extracted from filename pattern NAME_YYYY_MM_DDTHH…
+ * 4. Folder-based fallback
+ */
+private fun Alert.alertDisplayTitle(): String {
+    if (sourceName.isNotBlank()) return sourceName
+    if (cameraId.isNotBlank()) return cameraId
+    // Extract camera name from filename: everything before _YYYY_MM_DDTHH
+    val extracted = Regex("""^(.+?)_\d{4}_\d{2}_\d{2}T""").find(title)?.groupValues?.getOrNull(1)
+    if (!extracted.isNullOrBlank()) return extracted
+    return if (folder == "alertas") "Alerta Detectada" else "Pre-Alerta"
+}
+
+/** "23 Mar · 03:36  ·  Hace 2 h" */
+private fun buildDateLine(epochMillis: Long): String {
+    val formatted = epochMillis.toDisplayDate()
+    val relative = formatRelativeTime(epochMillis)
+    return "$formatted  ·  $relative"
+}
+
+private fun Long.toDisplayDate(): String {
+    if (this == 0L) return "N/D"
+    val dt = Instant.fromEpochMilliseconds(this)
+        .toLocalDateTime(TimeZone.currentSystemDefault())
+    val month = when (dt.monthNumber) {
+        1 -> "Ene"; 2 -> "Feb"; 3 -> "Mar"; 4 -> "Abr"
+        5 -> "May"; 6 -> "Jun"; 7 -> "Jul"; 8 -> "Ago"
+        9 -> "Sep"; 10 -> "Oct"; 11 -> "Nov"; else -> "Dic"
+    }
+    val h = dt.hour.toString().padStart(2, '0')
+    val m = dt.minute.toString().padStart(2, '0')
+    return "${dt.dayOfMonth} $month · $h:$m"
 }
 
 private fun formatRelativeTime(epochMillis: Long): String {
