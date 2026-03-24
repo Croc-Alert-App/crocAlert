@@ -73,14 +73,66 @@ class AlertLocalDataSourceTest {
     }
 
     @Test
-    fun `upsertAll with empty list replaces all stored alerts`() = runTest {
+    fun `upsertAll with empty list preserves existing cached alerts (merge semantics)`() = runTest {
         val ds = makeDataSource()
         ds.upsertAll(listOf(alert1, alert2))
-        ds.upsertAll(emptyList())
+        ds.upsertAll(emptyList())  // nothing to merge — existing records untouched
+        ds.selectAll().test {
+            val items = awaitItem()
+            assertEquals(2, items.size)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `upsertAll preserves older records not present in incremental update`() = runTest {
+        val ds = makeDataSource()
+        ds.upsertAll(listOf(alert1))           // seed: alert1
+        ds.upsertAll(listOf(alert2))            // incremental: adds alert2, keeps alert1
+        ds.selectAll().test {
+            val items = awaitItem()
+            assertEquals(2, items.size)
+            assertTrue(items.any { it.id == "a-1" }, "alert1 must be preserved")
+            assertTrue(items.any { it.id == "a-2" }, "alert2 must be added")
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    // ── clearAndUpsertAll ────────────────────────────────────────────────────
+
+    @Test
+    fun `clearAndUpsertAll replaces entire cache evicting absent records`() = runTest {
+        val ds = makeDataSource()
+        ds.upsertAll(listOf(alert1, alert2))   // seed both
+        ds.clearAndUpsertAll(listOf(alert1))   // full sync: only alert1 returned
+        ds.selectAll().test {
+            val items = awaitItem()
+            assertEquals(1, items.size)
+            assertEquals("a-1", items[0].id)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `clearAndUpsertAll with empty list clears entire cache`() = runTest {
+        val ds = makeDataSource()
+        ds.upsertAll(listOf(alert1, alert2))
+        ds.clearAndUpsertAll(emptyList())
         ds.selectAll().test {
             assertTrue(awaitItem().isEmpty())
             cancelAndIgnoreRemainingEvents()
         }
+    }
+
+    @Test
+    fun `clearAndUpsertAll updates lastSyncedAt`() = runTest {
+        val ds = makeDataSource()
+        val before = kotlinx.datetime.Clock.System.now().toEpochMilliseconds()
+        ds.clearAndUpsertAll(listOf(alert1))
+        val after = kotlinx.datetime.Clock.System.now().toEpochMilliseconds()
+        val syncedAt = ds.lastSyncedAt()
+        assertNotNull(syncedAt)
+        assertTrue(syncedAt in before..after)
     }
 
     // ── lastSyncedAt ─────────────────────────────────────────────────────────
