@@ -4,7 +4,6 @@ import crocalert.app.shared.data.dto.AlertDto
 import crocalert.app.shared.data.dto.IdResponse
 import crocalert.app.shared.data.remote.AlertRemoteDataSourceImpl
 import crocalert.app.shared.network.ApiResult
-import crocalert.app.shared.network.ApiRoutes
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
@@ -56,7 +55,7 @@ class AlertRemoteDataSourceImplTest {
         }
     }
 
-    private fun impl(client: HttpClient) = AlertRemoteDataSourceImpl(client, baseUrl)
+    private fun impl(client: HttpClient, apiKey: String = "") = AlertRemoteDataSourceImpl(client, baseUrl, apiKey)
 
     // ── getAlerts ─────────────────────────────────────────────────────────────
 
@@ -158,24 +157,18 @@ class AlertRemoteDataSourceImplTest {
     // ── Auth header ───────────────────────────────────────────────────────────
 
     @Test
-    fun `X-API-Key header is added when API_KEY is set`() = runTest {
+    fun `X-API-Key header is added when apiKey is set`() = runTest {
         val captured = mutableListOf<Map<String, List<String>>>()
         val client = buildClient(capturedHeaders = captured)
-        ApiRoutes.API_KEY = "secret-key"
-        try {
-            impl(client).getAlerts()
-            assertEquals("secret-key", captured.first()["X-API-Key"]?.first())
-        } finally {
-            ApiRoutes.API_KEY = ""
-        }
+        impl(client, apiKey = "secret-key").getAlerts()
+        assertEquals("secret-key", captured.first()["X-API-Key"]?.first())
     }
 
     @Test
-    fun `X-API-Key header is absent when API_KEY is blank`() = runTest {
+    fun `X-API-Key header is absent when apiKey is blank`() = runTest {
         val captured = mutableListOf<Map<String, List<String>>>()
         val client = buildClient(capturedHeaders = captured)
-        ApiRoutes.API_KEY = ""
-        impl(client).getAlerts()
+        impl(client, apiKey = "").getAlerts()
         assertNull(captured.first()["X-Api-Key"])
     }
 }
