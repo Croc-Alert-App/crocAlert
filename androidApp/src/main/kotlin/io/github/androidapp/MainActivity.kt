@@ -15,9 +15,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             CrocAlertTheme {
-                // Android emulator routes localhost through 10.0.2.2
-                // Change to your machine's LAN IP when testing on a real device
-                App(baseUrl = "http://10.0.2.2:8080")
+                App()
             }
         }
     }
