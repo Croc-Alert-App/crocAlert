@@ -1,0 +1,3 @@
+ALTER TABLE camera_entity ADD COLUMN expected_images INTEGER;
+ALTER TABLE camera_entity ADD COLUMN created_at INTEGER;
+ALTER TABLE camera_entity ADD COLUMN installed_at INTEGER;

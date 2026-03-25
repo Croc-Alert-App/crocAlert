@@ -1,4 +1,3 @@
-import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
@@ -6,6 +5,7 @@ plugins {
     alias(libs.plugins.androidLibrary)
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
+    alias(libs.plugins.kover)
 }
 
 kotlin {
@@ -45,6 +45,7 @@ kotlin {
         commonMain.dependencies {
             implementation(libs.androidxLifecycleViewmodelCompose)
             implementation(libs.androidxLifecycleRuntimeCompose)
+            implementation(libs.navigationCompose)
             implementation(project(":shared"))
 
             implementation(libs.composeRuntime)
@@ -64,6 +65,7 @@ kotlin {
         commonTest.dependencies {
             implementation(libs.kotlin.test)
             implementation(libs.kotlinxCoroutinesTest)
+            implementation(libs.turbine)
         }
 
         jvmMain.dependencies {
@@ -97,14 +99,23 @@ dependencies {
     debugImplementation(libs.composeUiTooling)
 }
 
-compose.desktop {
-    application {
-        mainClass = "crocalert.app.MainKt"
-
-        nativeDistributions {
-            targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
-            packageName = "crocalert.app"
-            packageVersion = "1.0.0"
+kover {
+    reports {
+        filters {
+            excludes {
+                packages(
+                    "crocalert.app.theme",
+                    "crocalert.app.ui.components",
+                    "crocalert.app.feature.alerts.data",
+                )
+                annotatedBy("androidx.compose.runtime.Composable")
+            }
+        }
+        verify {
+            rule("Minimum line coverage") {
+                bound { minValue = 30 }
+            }
         }
     }
 }
+

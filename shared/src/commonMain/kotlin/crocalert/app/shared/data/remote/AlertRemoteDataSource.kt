@@ -6,7 +6,7 @@ import crocalert.app.shared.network.ApiResult
 
 interface AlertRemoteDataSource {
 
-    suspend fun getAlerts(): ApiResult<List<AlertDto>>
+    suspend fun getAlerts(since: Long? = null): ApiResult<List<AlertDto>>
 
     suspend fun getAlert(id: String): ApiResult<AlertDto>
 
