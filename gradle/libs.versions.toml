@@ -28,8 +28,18 @@ koin = "3.5.6"
 # AndroidX lifecycle (Compose)
 androidxLifecycle = "2.8.0"
 
+# Compose Navigation (Multiplatform)
+navigationCompose = "2.7.0-alpha07"
+
+# SQLDelight + Sync
+sqldelight  = "2.0.2"
+workmanager = "2.9.1"
+datastore   = "1.1.1"
+
 # Tests
 junit = "4.13.2"
+turbine = "1.2.0"
+kover = "0.8.3"
 
 [libraries]
 # ---------- Android core ----------
@@ -62,6 +72,9 @@ composeComponentsResources = { module = "org.jetbrains.compose.components:compon
 androidxLifecycleViewmodelCompose = "org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-compose:2.8.0"
 androidxLifecycleRuntimeCompose = "org.jetbrains.androidx.lifecycle:lifecycle-runtime-compose:2.8.0"
 
+# ---------- Navigation Compose (JetBrains AndroidX for MPP) ----------
+navigationCompose = { module = "org.jetbrains.androidx.navigation:navigation-compose", version.ref = "navigationCompose" }
+
 # ---------- KotlinX ----------
 kotlinxDatetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "kotlinxDatetime" }
 kotlinxCoroutinesCore = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinxCoroutines" }
@@ -85,14 +98,26 @@ koinCompose = { module = "io.insert-koin:koin-compose" }
 koinAndroidxCompose = { module = "io.insert-koin:koin-androidx-compose", version.ref = "koin" }
 koinComposeViewmodelNavigation = { module = "io.insert-koin:koin-compose-viewmodel-navigation" }
 
+# ---------- SQLDelight ----------
+sqldelightCoroutines = { module = "app.cash.sqldelight:coroutines-extensions", version.ref = "sqldelight" }
+sqldelightAndroid    = { module = "app.cash.sqldelight:android-driver",         version.ref = "sqldelight" }
+sqldelightSqlite     = { module = "app.cash.sqldelight:sqlite-driver",          version.ref = "sqldelight" }
+
+# ---------- WorkManager ----------
+workmanagerKtx = { module = "androidx.work:work-runtime-ktx", version.ref = "workmanager" }
+
+# ---------- DataStore ----------
+datastorePrefs = { module = "androidx.datastore:datastore-preferences", version.ref = "datastore" }
+
 # ---------- Tests ----------
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
 kotlin-testJunit = { module = "org.jetbrains.kotlin:kotlin-test-junit", version.ref = "kotlin" }
+kotlinxCoroutinesTest = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "kotlinxCoroutines" }
 junit = { module = "junit:junit", version.ref = "junit" }
 androidxTestExtJunit = "androidx.test.ext:junit:1.1.5"
 androidxEspressoCore = "androidx.test.espresso:espresso-core:3.5.1"
-kotlinxCoroutinesTest = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "kotlinxCoroutines" }
 ktorClientMock = { module = "io.ktor:ktor-client-mock", version.ref = "ktor" }
+turbine = { module = "app.cash.turbine:turbine", version.ref = "turbine" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }
@@ -104,3 +129,5 @@ kotlinMultiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref =
 composeMultiplatform = { id = "org.jetbrains.compose", version.ref = "composeMultiplatform" }
 composeCompiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 kotlinSerialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+kover = { id = "org.jetbrains.kotlinx.kover", version.ref = "kover" }
+sqldelight = { id = "app.cash.sqldelight", version.ref = "sqldelight" }

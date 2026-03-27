@@ -19,7 +19,7 @@ captures
 **/xcshareddata/WorkspaceSettings.xcsettings
 node_modules/
 # Keys
-serviceAccountKey.json
+**/serviceAccountKey.json
 *.env
 *.env.local
 google-services.json

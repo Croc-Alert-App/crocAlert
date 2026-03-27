@@ -1,21 +1,34 @@
 package crocalert.app.shared
 
 import crocalert.app.domain.repository.AlertRepository
+import crocalert.app.domain.repository.CameraRepository
+import crocalert.app.domain.repository.SiteRepository
+import crocalert.app.shared.data.local.InMemoryAlertLocalDataSource
+import crocalert.app.shared.data.local.InMemoryCameraLocalDataSource
+import crocalert.app.shared.data.local.InMemorySiteLocalDataSource
 import crocalert.app.shared.data.remote.AlertRemoteDataSourceImpl
+import crocalert.app.shared.data.remote.CameraRemoteDataSourceImpl
+import crocalert.app.shared.data.remote.SiteRemoteDataSourceImpl
 import crocalert.app.shared.data.repository.AlertRepositoryImpl
+import crocalert.app.shared.data.repository.CameraRepositoryImpl
+import crocalert.app.shared.data.repository.SiteRepositoryImpl
 import crocalert.app.shared.network.ApiRoutes
 import crocalert.app.shared.network.HttpClientFactory
 
 // Singleton HTTP client — shared across all repository instances to reuse the connection pool.
 private val sharedHttpClient by lazy { HttpClientFactory.create() }
 
-/**
- * Creates an AlertRepository wired to the given [baseUrl].
- * Reuses the platform's singleton HttpClient — safe to call multiple times.
- *
- * Set [ApiRoutes.API_KEY] before calling this if the server has CROC_API_KEY configured.
- */
-fun createAlertRepository(baseUrl: String = ApiRoutes.DEFAULT_BASE): AlertRepository {
+fun createAlertRepository(baseUrl: String = ApiRoutes.BASE): AlertRepository {
     val remote = AlertRemoteDataSourceImpl(sharedHttpClient, baseUrl)
-    return AlertRepositoryImpl(remote)
+    return AlertRepositoryImpl(remote, InMemoryAlertLocalDataSource())
+}
+
+fun createCameraRepository(baseUrl: String = ApiRoutes.BASE): CameraRepository {
+    val remote = CameraRemoteDataSourceImpl(sharedHttpClient, baseUrl)
+    return CameraRepositoryImpl(remote, InMemoryCameraLocalDataSource())
+}
+
+fun createSiteRepository(baseUrl: String = ApiRoutes.BASE): SiteRepository {
+    val remote = SiteRemoteDataSourceImpl(sharedHttpClient, baseUrl)
+    return SiteRepositoryImpl(remote, InMemorySiteLocalDataSource())
 }

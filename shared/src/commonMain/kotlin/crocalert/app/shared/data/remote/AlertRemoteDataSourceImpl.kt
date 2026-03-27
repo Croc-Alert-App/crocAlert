@@ -11,6 +11,7 @@ import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.delete
 import io.ktor.client.request.get
 import io.ktor.client.request.header
+import io.ktor.client.request.parameter
 import io.ktor.client.request.post
 import io.ktor.client.request.put
 import io.ktor.client.request.setBody
@@ -19,19 +20,28 @@ import io.ktor.http.contentType
 
 class AlertRemoteDataSourceImpl(
     private val client: HttpClient,
-    baseUrl: String
+    baseUrl: String,
+    private val apiKey: String = ApiRoutes.API_KEY,
 ) : AlertRemoteDataSource {
+
+    init {
+        require(baseUrl.isNotBlank()) { "baseUrl must not be blank" }
+    }
 
     private val alertsUrl = ApiRoutes.alertsUrl(baseUrl)
 
     // Adds X-API-Key header when the key is configured (server auth guard enabled)
     private fun HttpRequestBuilder.addAuth() {
-        val key = ApiRoutes.API_KEY
-        if (key.isNotBlank()) header("X-API-Key", key)
+        if (apiKey.isNotBlank()) header("X-API-Key", apiKey)
     }
 
-    override suspend fun getAlerts(): ApiResult<List<AlertDto>> =
-        safeCall { client.get(alertsUrl) { addAuth() }.body() }
+    override suspend fun getAlerts(since: Long?): ApiResult<List<AlertDto>> =
+        safeCall {
+            client.get(alertsUrl) {
+                addAuth()
+                if (since != null) parameter("since", since)
+            }.body()
+        }
 
     override suspend fun getAlert(id: String): ApiResult<AlertDto> =
         safeCall { client.get("$alertsUrl/$id") { addAuth() }.body() }
