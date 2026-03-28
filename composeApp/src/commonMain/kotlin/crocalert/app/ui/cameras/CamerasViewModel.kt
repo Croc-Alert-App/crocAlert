@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 import kotlinx.datetime.TimeZone
@@ -27,6 +28,7 @@ class CamerasViewModel(
     // Raw data cache so we can rebuild cards without a network call
     private var rawCameras: List<Camera> = emptyList()
     private val rawDailyStats: MutableMap<String, CameraDailyStatsDto> = mutableMapOf()
+    private var statsJob: Job? = null
 
     private val _cameras = MutableStateFlow<List<CameraUiItem>>(initialCameras)
 
@@ -255,18 +257,23 @@ class CamerasViewModel(
             val today = Clock.System.todayIn(TimeZone.currentSystemDefault()).toString()
             cameraRepository.observeCameras().collect { cameras ->
                 rawCameras = cameras
-                // Single request for all cameras' daily stats instead of N per-camera calls
-                when (val statsResult = cameraRepository.getDailyStatsForAll(today)) {
-                    is ApiResult.Success -> {
-                        rawDailyStats.clear()
-                        statsResult.data.forEach { rawDailyStats[it.cameraId] = it }
-                    }
-                    is ApiResult.Error -> {
-                        _error.value = "Error al obtener estadísticas diarias"
-                    }
-                }
+                // Render immediately from local cache — no network wait
                 rebuildCameras()
                 _isLoading.value = false
+                // Fetch stats in the background; cancel any in-flight request first
+                statsJob?.cancel()
+                statsJob = viewModelScope.launch {
+                    when (val statsResult = cameraRepository.getDailyStatsForAll(today)) {
+                        is ApiResult.Success -> {
+                            rawDailyStats.clear()
+                            statsResult.data.forEach { rawDailyStats[it.cameraId] = it }
+                            rebuildCameras()
+                        }
+                        is ApiResult.Error -> {
+                            _error.value = "Error al obtener estadísticas diarias"
+                        }
+                    }
+                }
             }
         } catch (e: Exception) {
             _error.value = e.message ?: "Error al cargar las cámaras"

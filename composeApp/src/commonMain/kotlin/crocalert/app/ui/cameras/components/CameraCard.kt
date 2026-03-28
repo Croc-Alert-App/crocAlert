@@ -189,7 +189,7 @@ fun CameraCard(
                             }
                             TextButton(onClick = onDeleteClick) {
                                 Text(
-                                    text = "Eliminar",
+                                    text = "Desactivar",
                                     style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
                                     color = MaterialTheme.colorScheme.error,
                                 )

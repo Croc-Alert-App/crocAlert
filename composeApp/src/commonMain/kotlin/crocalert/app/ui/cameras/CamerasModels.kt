@@ -47,7 +47,7 @@ enum class VisibilityFilter {
 
     val label: String get() = when (this) {
         Active  -> "Activas"
-        Deleted -> "Eliminadas"
+        Deleted -> "Desactivadas"
         All     -> "Todas"
     }
 }
