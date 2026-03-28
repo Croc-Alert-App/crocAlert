@@ -79,5 +79,43 @@ fun Route.cameraRoutes(service: CameraServicePort) {
 
             call.respond(service.getDailyStatsForAll(date))
         }
+        get("global-daily-rate/{date}") {
+            val date = call.parameters["date"]
+                ?: return@get call.respond(HttpStatusCode.BadRequest, "Missing date")
+
+            val stats = service.getGlobalDailyCaptureRate(date)
+            call.respond(stats)
+        }
+        //una cam
+        get("{id}/health-check/{date}") {
+            val cameraId = call.parameters["id"]
+                ?: return@get call.respond(HttpStatusCode.BadRequest, "Missing camera id")
+
+            val date = call.parameters["date"]
+                ?: return@get call.respond(HttpStatusCode.BadRequest, "Missing date")
+
+            val result = service.getCameraHealthCheck(cameraId, date)
+                ?: return@get call.respond(HttpStatusCode.NotFound, "Camera not found")
+
+            call.respond(result)
+        }
+
+        //todas las cams
+        get("health-check/{date}") {
+            val date = call.parameters["date"]
+                ?: return@get call.respond(HttpStatusCode.BadRequest, "Missing date")
+
+            call.respond(service.getAllCameraHealthChecks(date))
+        }
+
+        // 🔥 DASHBOARD COMPLETO (el importante)
+        get("dashboard/{date}") {
+            val date = call.parameters["date"]
+                ?: return@get call.respond(HttpStatusCode.BadRequest, "Missing date")
+
+            call.respond(service.getMonitoringDashboard(date))
+        }
+
+
     }
 }

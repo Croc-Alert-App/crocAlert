@@ -6,6 +6,9 @@ import crocalert.server.FirebaseInit
 import java.util.UUID
 import com.google.cloud.Timestamp
 import crocalert.app.shared.data.dto.CameraDailyStatsDto
+import crocalert.app.shared.data.dto.CameraHealthCheckDto
+import crocalert.app.shared.data.dto.CameraMonitoringDashboardDto
+import crocalert.app.shared.data.dto.GlobalDailyCaptureRateDto
 
 class CameraService : CameraServicePort {
 
@@ -181,4 +184,154 @@ class CameraService : CameraServicePort {
             )
         }
     }
+    override suspend fun getGlobalDailyCaptureRate(date: String): GlobalDailyCaptureRateDto {
+        val camerasSnap = col.get().get()
+        val dayDoc = imagesPerDayCol.document(date).get().get()
+
+        val imagesMap = if (dayDoc.exists()) {
+            dayDoc.get("imagesPerDay") as? Map<*, *> ?: emptyMap<Any, Any>()
+        } else {
+            emptyMap<Any, Any>()
+        }
+
+        val totalCameras = camerasSnap.documents.size
+        val activeCameraDocs = camerasSnap.documents.filter { it.getBoolean("isActive") ?: true }
+        val activeCameras = activeCameraDocs.size
+
+        val expectedImagesTotal = activeCameraDocs.sumOf { cameraDoc ->
+            cameraDoc.getLong("expectedImages")?.toInt()
+                ?: cameraDoc.getLong("excpectedImages")?.toInt()
+                ?: 0
+        }
+
+        val receivedImagesTotal = activeCameraDocs.sumOf { cameraDoc ->
+            val cameraId = cameraDoc.id
+            (imagesMap[cameraId] as? Number)?.toInt() ?: 0
+        }
+
+        val missingImagesTotal = (expectedImagesTotal - receivedImagesTotal).coerceAtLeast(0)
+        val extraImagesTotal = (receivedImagesTotal - expectedImagesTotal).coerceAtLeast(0)
+
+        val captureRate = if (expectedImagesTotal > 0) {
+            (receivedImagesTotal.toDouble() / expectedImagesTotal.toDouble()) * 100.0
+        } else {
+            0.0
+        }
+
+        return GlobalDailyCaptureRateDto(
+            date = date,
+            totalCameras = totalCameras,
+            activeCameras = activeCameras,
+            expectedImagesTotal = expectedImagesTotal,
+            receivedImagesTotal = receivedImagesTotal,
+            missingImagesTotal = missingImagesTotal,
+            extraImagesTotal = extraImagesTotal,
+            captureRate = captureRate
+        )
+    }
+    private fun calculateHealthStatus(captureRate: Double): String {
+        return when {
+            captureRate >= 97.5 -> "HEALTHY"
+            captureRate >= 90.0 -> "CAUTION"
+            else -> "RISK"
+        }
+    }
+    override suspend fun getAllCameraHealthChecks(date: String): List<CameraHealthCheckDto> {
+        val dailyStats = getDailyStatsForAll(date)
+
+        return dailyStats.map { stats ->
+            val captureRate = if (stats.expectedImages > 0) {
+                (stats.receivedImages.toDouble() / stats.expectedImages.toDouble()) * 100.0
+            } else {
+                0.0
+            }
+
+            val extraImages = (stats.receivedImages - stats.expectedImages).coerceAtLeast(0)
+            val healthStatus = calculateHealthStatus(captureRate)
+
+            CameraHealthCheckDto(
+                cameraId = stats.cameraId,
+                date = stats.date,
+                expectedImages = stats.expectedImages,
+                receivedImages = stats.receivedImages,
+                missingImages = stats.missingImages,
+                extraImages = extraImages,
+                captureRate = captureRate,
+                healthStatus = healthStatus,
+                isActive = stats.isActive,
+                installedAt = stats.installedAt
+            )
+        }
+    }
+    override suspend fun getCameraHealthCheck(cameraId: String, date: String): CameraHealthCheckDto? {
+        val stats = getDailyStats(cameraId, date) ?: return null
+
+        val captureRate = if (stats.expectedImages > 0) {
+            (stats.receivedImages.toDouble() / stats.expectedImages.toDouble()) * 100.0
+        } else {
+            0.0
+        }
+
+        val extraImages = (stats.receivedImages - stats.expectedImages).coerceAtLeast(0)
+        val healthStatus = calculateHealthStatus(captureRate)
+
+        return CameraHealthCheckDto(
+            cameraId = stats.cameraId,
+            date = stats.date,
+            expectedImages = stats.expectedImages,
+            receivedImages = stats.receivedImages,
+            missingImages = stats.missingImages,
+            extraImages = extraImages,
+            captureRate = captureRate,
+            healthStatus = healthStatus,
+            isActive = stats.isActive,
+            installedAt = stats.installedAt
+        )
+    }
+    override suspend fun getMonitoringDashboard(date: String): CameraMonitoringDashboardDto {
+        val cameraHealthChecks = getAllCameraHealthChecks(date)
+
+        val totalCameras = cameraHealthChecks.size
+        val activeCameraChecks = cameraHealthChecks.filter { it.isActive }
+        val activeCameras = activeCameraChecks.size
+
+        val expectedImagesTotal = activeCameraChecks.sumOf { it.expectedImages }
+        val receivedImagesTotal = activeCameraChecks.sumOf { it.receivedImages }
+        val missingImagesTotal = activeCameraChecks.sumOf { it.missingImages }
+        val extraImagesTotal = activeCameraChecks.sumOf { it.extraImages }
+
+        val globalCaptureRate = if (expectedImagesTotal > 0) {
+            (receivedImagesTotal.toDouble() / expectedImagesTotal.toDouble()) * 100.0
+        } else 0.0
+
+        val healthyCameras = activeCameraChecks.count { it.healthStatus == "HEALTHY" }
+        val cautionCameras = activeCameraChecks.count { it.healthStatus == "CAUTION" }
+        val riskCameras = activeCameraChecks.count { it.healthStatus == "RISK" }
+
+        val healthyRate = if (activeCameras > 0) {
+            (healthyCameras.toDouble() / activeCameras.toDouble()) * 100.0
+        } else 0.0
+
+        val operationalRate = if (activeCameras > 0) {
+            ((healthyCameras + cautionCameras).toDouble() / activeCameras.toDouble()) * 100.0
+        } else 0.0
+
+        return CameraMonitoringDashboardDto(
+            date = date,
+            totalCameras = totalCameras,
+            activeCameras = activeCameras,
+            expectedImagesTotal = expectedImagesTotal,
+            receivedImagesTotal = receivedImagesTotal,
+            missingImagesTotal = missingImagesTotal,
+            extraImagesTotal = extraImagesTotal,
+            globalCaptureRate = globalCaptureRate,
+            healthyCameras = healthyCameras,
+            cautionCameras = cautionCameras,
+            riskCameras = riskCameras,
+            healthyRate = healthyRate,
+            operationalRate = operationalRate,
+            cameras = cameraHealthChecks
+        )
+    }
+
 }
