@@ -11,17 +11,15 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Add
-import androidx.compose.material.icons.outlined.Remove
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.BasicAlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilledIconButton
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
@@ -29,6 +27,8 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -42,7 +42,7 @@ import androidx.compose.ui.unit.dp
 import crocalert.app.model.Camera
 import crocalert.app.theme.CrocBlue
 import crocalert.app.ui.cameras.DEFAULT_EXPECTED_PER_DAY
-import crocalert.app.theme.CrocNeutralDark
+import crocalert.app.theme.CrocBlueLight
 import crocalert.app.theme.CrocWhite
 import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
@@ -94,6 +94,12 @@ fun CameraFormDialog(
         mutableIntStateOf(
             (cameraToEdit.expectedImages?.takeIf { it > 0 } ?: DEFAULT_EXPECTED_PER_DAY)
                 .coerceIn(MIN_EXPECTED, MAX_EXPECTED)
+        )
+    }
+    var expectedImagesText by remember(cameraToEdit) {
+        mutableStateOf(
+            (cameraToEdit.expectedImages?.takeIf { it > 0 } ?: DEFAULT_EXPECTED_PER_DAY)
+                .coerceIn(MIN_EXPECTED, MAX_EXPECTED).toString()
         )
     }
     var installedAt    by remember(cameraToEdit) { mutableStateOf(cameraToEdit.installedAt?.toDateString() ?: "") }
@@ -190,7 +196,7 @@ fun CameraFormDialog(
 
                 Spacer(Modifier.height(16.dp))
 
-                // ── Expected Images stepper ────────────────────────────────
+                // ── Expected Images input ──────────────────────────────────
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
@@ -201,27 +207,34 @@ fun CameraFormDialog(
                         color = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.weight(1f),
                     )
-                    FilledIconButton(
-                        onClick = { if (expectedImages > MIN_EXPECTED) expectedImages-- },
-                        modifier = Modifier.size(28.dp),
-                        enabled = !isSaving && expectedImages > MIN_EXPECTED,
-                        colors = IconButtonDefaults.filledIconButtonColors(containerColor = CrocNeutralDark),
-                    ) {
-                        Icon(Icons.Outlined.Remove, contentDescription = null, modifier = Modifier.size(14.dp), tint = CrocWhite)
-                    }
-                    Text(
-                        text = "$expectedImages",
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                        modifier = Modifier.padding(horizontal = 12.dp),
+                    BasicTextField(
+                        value = expectedImagesText,
+                        onValueChange = { raw ->
+                            val filtered = raw.filter { it.isDigit() }.take(2)
+                            expectedImagesText = filtered
+                            filtered.toIntOrNull()?.coerceIn(MIN_EXPECTED, MAX_EXPECTED)?.let {
+                                expectedImages = it
+                            }
+                        },
+                        enabled = !isSaving,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true,
+                        textStyle = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.Center,
+                        ),
+                        decorationBox = { innerTextField ->
+                            Box(
+                                modifier = Modifier
+                                    .background(CrocBlueLight.copy(alpha = 0.25f), RoundedCornerShape(6.dp))
+                                    .padding(horizontal = 12.dp, vertical = 6.dp)
+                                    .width(56.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                innerTextField()
+                            }
+                        },
                     )
-                    FilledIconButton(
-                        onClick = { if (expectedImages < MAX_EXPECTED) expectedImages++ },
-                        modifier = Modifier.size(28.dp),
-                        enabled = !isSaving && expectedImages < MAX_EXPECTED,
-                        colors = IconButtonDefaults.filledIconButtonColors(containerColor = CrocNeutralDark),
-                    ) {
-                        Icon(Icons.Outlined.Add, contentDescription = null, modifier = Modifier.size(14.dp), tint = CrocWhite)
-                    }
                 }
 
                 // ── Active toggle ──────────────────────────────────────────
