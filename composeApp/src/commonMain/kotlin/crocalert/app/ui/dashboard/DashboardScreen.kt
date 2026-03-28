@@ -38,6 +38,7 @@ import crocalert.app.ui.components.SyncBanner
 @Composable
 fun DashboardScreen(
     onAlertClick: (String) -> Unit = {},
+    onLogout: () -> Unit = {},
     viewModel: DashboardViewModel = viewModel { DashboardViewModel() },
 ) {
     val selectedTab by viewModel.selectedTab.collectAsState()
@@ -61,7 +62,7 @@ fun DashboardScreen(
                     DashboardTab.Home -> DashboardContent(state.data, onAlertClick = onAlertClick)
                     DashboardTab.Cameras -> CamerasScreen()
                     DashboardTab.Alerts -> AlertListScreen(onAlertClick = onAlertClick)
-                    DashboardTab.Profile -> ProfileScreen()
+                    DashboardTab.Profile -> ProfileScreen(onLogout = onLogout)
                 }
             }
         }
