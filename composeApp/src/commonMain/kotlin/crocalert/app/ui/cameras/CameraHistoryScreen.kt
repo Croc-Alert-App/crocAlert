@@ -14,22 +14,21 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.background
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
-import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.ChevronLeft
 import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.Edit
-import androidx.compose.material.icons.outlined.Remove
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -37,6 +36,11 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -46,6 +50,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import crocalert.app.theme.CrocAmber
 import crocalert.app.theme.CrocBlue
+import crocalert.app.theme.CrocBlueLight
 import crocalert.app.theme.CrocNeutralDark
 import crocalert.app.theme.CrocWhite
 import crocalert.app.ui.cameras.components.CaptureGridSection
@@ -262,6 +267,7 @@ private fun CaptureStatsRow(
 
 @Composable
 private fun ExpectedStepper(value: Int, onValueChange: (Int) -> Unit) {
+    var text by remember(value) { mutableStateOf("$value") }
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
             text = "Esperadas",
@@ -269,40 +275,32 @@ private fun ExpectedStepper(value: Int, onValueChange: (Int) -> Unit) {
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Spacer(Modifier.height(4.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            FilledIconButton(
-                onClick = { onValueChange(value - 1) },
-                modifier = Modifier.size(28.dp),
-                enabled = value > 1,
-                colors = IconButtonDefaults.filledIconButtonColors(containerColor = CrocNeutralDark),
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.Remove,
-                    contentDescription = "Reducir esperadas",
-                    modifier = Modifier.size(14.dp),
-                    tint = CrocWhite,
-                )
-            }
-            Text(
-                text = "$value",
-                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+        BasicTextField(
+            value = text,
+            onValueChange = { raw ->
+                val filtered = raw.filter { it.isDigit() }.take(2)
+                text = filtered
+                filtered.toIntOrNull()?.coerceIn(1, 48)?.let { onValueChange(it) }
+            },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            singleLine = true,
+            textStyle = MaterialTheme.typography.titleMedium.copy(
+                fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.padding(horizontal = 10.dp),
-            )
-            FilledIconButton(
-                onClick = { onValueChange(value + 1) },
-                modifier = Modifier.size(28.dp),
-                enabled = value < 48,
-                colors = IconButtonDefaults.filledIconButtonColors(containerColor = CrocNeutralDark),
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.Add,
-                    contentDescription = "Aumentar esperadas",
-                    modifier = Modifier.size(14.dp),
-                    tint = CrocWhite,
-                )
-            }
-        }
+                textAlign = TextAlign.Center,
+            ),
+            decorationBox = { innerTextField ->
+                Box(
+                    modifier = Modifier
+                        .background(CrocBlueLight.copy(alpha = 0.25f), RoundedCornerShape(6.dp))
+                        .padding(horizontal = 10.dp, vertical = 6.dp)
+                        .width(52.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    innerTextField()
+                }
+            },
+        )
     }
 }
 
