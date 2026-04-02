@@ -64,6 +64,8 @@ import crocalert.app.ui.dashboard.DashboardTab
 import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
+import io.kamel.image.KamelImage
+import io.kamel.image.asyncPainterResource
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -240,6 +242,21 @@ private fun AlertDetailContent(
 
                 HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
 
+                //IMG
+                alert.thumbnailUrl?.let { url ->
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    KamelImage(
+                        resource = asyncPainterResource(url.toDirectDriveImageUrl()),
+                        contentDescription = "Imagen de captura",
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(200.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                    )
+                }
+
                 // Filename
                 if (alert.title.isNotBlank()) {
                     Text(
@@ -410,4 +427,15 @@ private fun Long.toDisplayDateTime(): String {
     val h = dt.hour.toString().padStart(2, '0')
     val m = dt.minute.toString().padStart(2, '0')
     return "${dt.dayOfMonth} $month · $h:$m"
+}
+
+private fun String.toDirectDriveImageUrl(): String {
+    val regex = Regex("/d/([a-zA-Z0-9_-]+)")
+    val match = regex.find(this)
+    val fileId = match?.groupValues?.get(1)
+    return if (fileId != null) {
+        "https://drive.google.com/uc?export=view&id=$fileId"
+    } else {
+        this
+    }
 }
