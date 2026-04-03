@@ -2,6 +2,7 @@ plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
+    alias(libs.plugins.googleServices)
 }
 
 android {
@@ -40,4 +41,7 @@ dependencies {
     androidTestImplementation(platform(libs.androidxComposeBom))
     androidTestImplementation(libs.androidxComposeUiTestJunit4)
     debugImplementation(libs.androidxComposeUiTestManifest)
+    implementation(platform(libs.firebaseBom))
+    implementation(libs.firebaseAuth)
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.8.1")
 }

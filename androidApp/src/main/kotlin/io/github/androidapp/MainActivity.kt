@@ -7,7 +7,7 @@ import androidx.activity.enableEdgeToEdge
 import crocalert.app.App
 import crocalert.app.shared.AppModule
 import crocalert.app.theme.CrocAlertTheme
-
+import io.github.androidapp.auth.FirebaseAuthGateway
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -15,7 +15,9 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             CrocAlertTheme {
-                App()
+                App(
+                    authGateway = FirebaseAuthGateway(),
+                )
             }
         }
     }

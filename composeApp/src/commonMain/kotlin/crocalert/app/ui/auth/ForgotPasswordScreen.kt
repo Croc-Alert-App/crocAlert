@@ -25,16 +25,23 @@ import crocalert.app.ui.auth.components.AuthScreenScaffold
 import crocalert.app.ui.auth.components.CrocAlertPrimaryButton
 import crocalert.app.ui.auth.components.CrocAlertSecondaryButton
 import crocalert.app.ui.auth.components.CrocAlertTextField
-
+import androidx.compose.runtime.rememberCoroutineScope
+import crocalert.app.ui.auth.AuthGateway
+import crocalert.app.ui.auth.AuthResult
+import kotlinx.coroutines.launch
 private val EMAIL_REGEX = Regex("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}\$")
 
 @Composable
-fun ForgotPasswordScreen(onBack: () -> Unit) {
+fun ForgotPasswordScreen(
+    authGateway: AuthGateway,
+    onBack: () -> Unit,
+)  {
     var email by remember { mutableStateOf("") }
     var emailSent by remember { mutableStateOf(false) }
 
     val emailError = if (email.isNotEmpty() && !email.matches(EMAIL_REGEX))
         "Correo electrónico inválido" else null
+    val scope = rememberCoroutineScope()
 
     AuthScreenScaffold {
         Spacer(Modifier.height(40.dp))
@@ -46,7 +53,20 @@ fun ForgotPasswordScreen(onBack: () -> Unit) {
                 email = email,
                 emailError = emailError,
                 onEmailChange = { email = it },
-                onSend = { emailSent = true }, // TODO: call backend email service
+                onSend = {
+                    scope.launch {
+                        when (authGateway.sendPasswordReset(email)) {
+                            is AuthResult.Success -> {
+                                emailSent = true
+                            }
+                            is AuthResult.Error -> {
+                                emailSent = true
+                            }
+
+                            AuthResult.MfaRequired -> Unit
+                        }
+                    }
+                },
                 onBack = onBack,
             )
         }
