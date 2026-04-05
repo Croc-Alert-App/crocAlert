@@ -211,39 +211,7 @@ class CamerasViewModel(
                     expectedPerDay = camera.expectedImages?.takeIf { it > 0 } ?: DEFAULT_EXPECTED_PER_DAY,
                 )
             }
-        } + DEMO_CAMERAS
-    }
-
-    companion object {
-        // TODO: remove after demo — hardcoded cameras to showcase sort + status variety
-        private val DEMO_CAMERAS = listOf(
-            CameraUiItem(
-                id             = "demo-bien",
-                name           = "CAM-DEMO-A",
-                isActive       = true,
-                status         = CameraStatus.Ok,
-                lastCapture    = "Hace 15 min",
-                imagesSent     = 22,
-                imagesExpected = 24,
-                captureCount   = 22,
-                captureExpected= 24,
-                missingCaptures= 2,
-                integrityFlags = 0,
-            ),
-            CameraUiItem(
-                id             = "demo-precaucion",
-                name           = "CAM-DEMO-B",
-                isActive       = true,
-                status         = CameraStatus.Attention,
-                lastCapture    = "Hace 2 h",
-                imagesSent     = 16,
-                imagesExpected = 24,
-                captureCount   = 16,
-                captureExpected= 24,
-                missingCaptures= 8,
-                integrityFlags = 0,
-            ),
-        )
+        }
     }
 
     private suspend fun reloadExpectedAndRebuild() {

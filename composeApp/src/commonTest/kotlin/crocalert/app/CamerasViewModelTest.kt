@@ -296,6 +296,80 @@ class CamerasViewModelTest {
         countsJob.cancel()
     }
 
+    // ── Background stats loading ──────────────────────────────────────────────
+
+    @Test
+    fun `stats are fetched in background after cameras are rendered`() = runTest {
+        var statsCalled = false
+        val repo = object : CameraRepository {
+            override fun observeCameras(siteId: String?): Flow<List<Camera>> = flowOf(emptyList())
+            override fun observeCamera(cameraId: String): Flow<Camera?> = flowOf(null)
+            override suspend fun getCapturesByCamera(cameraId: String): ApiResult<List<CaptureDto>> = ApiResult.Success(emptyList())
+            override suspend fun getDailyStats(cameraId: String, date: String): ApiResult<CameraDailyStatsDto> = ApiResult.Error("n/a", 501)
+            override suspend fun getDailyStatsForAll(date: String): ApiResult<List<CameraDailyStatsDto>> {
+                statsCalled = true
+                return ApiResult.Success(emptyList())
+            }
+            override suspend fun createCamera(camera: Camera): String = ""
+            override suspend fun updateCamera(camera: Camera) {}
+            override suspend fun deleteCamera(cameraId: String) {}
+            override suspend fun refresh() {}
+        }
+        // No initialCameras → loadData() runs and triggers getDailyStatsForAll
+        val v = CamerasViewModel(cameraRepository = repo)
+        val job = launch { v.filteredCameras.collect { } }
+        advanceUntilIdle()
+        assertFalse(v.isLoading.value)
+        assertTrue(statsCalled)
+        job.cancel()
+    }
+
+    @Test
+    fun `stats error sets error message`() = runTest {
+        val repo = object : CameraRepository {
+            override fun observeCameras(siteId: String?): Flow<List<Camera>> = flowOf(emptyList())
+            override fun observeCamera(cameraId: String): Flow<Camera?> = flowOf(null)
+            override suspend fun getCapturesByCamera(cameraId: String): ApiResult<List<CaptureDto>> = ApiResult.Success(emptyList())
+            override suspend fun getDailyStats(cameraId: String, date: String): ApiResult<CameraDailyStatsDto> = ApiResult.Error("n/a", 501)
+            override suspend fun getDailyStatsForAll(date: String): ApiResult<List<CameraDailyStatsDto>> =
+                ApiResult.Error("network error", 503)
+            override suspend fun createCamera(camera: Camera): String = ""
+            override suspend fun updateCamera(camera: Camera) {}
+            override suspend fun deleteCamera(cameraId: String) {}
+            override suspend fun refresh() {}
+        }
+        // No initialCameras → loadData() runs and reaches the error path
+        val v = CamerasViewModel(cameraRepository = repo)
+        val job = launch { v.filteredCameras.collect { } }
+        advanceUntilIdle()
+        assertNotNull(v.error.value)
+        assertFalse(v.isLoading.value)
+        job.cancel()
+    }
+
+    @Test
+    fun `stats success does not produce an error`() = runTest {
+        val stats = CameraDailyStatsDto(cameraId = "A", date = "2026-01-01", expectedImages = 10, receivedImages = 8, missingImages = 2, isActive = true)
+        val repo = object : CameraRepository {
+            override fun observeCameras(siteId: String?): Flow<List<Camera>> = flowOf(emptyList())
+            override fun observeCamera(cameraId: String): Flow<Camera?> = flowOf(null)
+            override suspend fun getCapturesByCamera(cameraId: String): ApiResult<List<CaptureDto>> = ApiResult.Success(emptyList())
+            override suspend fun getDailyStats(cameraId: String, date: String): ApiResult<CameraDailyStatsDto> = ApiResult.Error("n/a", 501)
+            override suspend fun getDailyStatsForAll(date: String): ApiResult<List<CameraDailyStatsDto>> =
+                ApiResult.Success(listOf(stats))
+            override suspend fun createCamera(camera: Camera): String = ""
+            override suspend fun updateCamera(camera: Camera) {}
+            override suspend fun deleteCamera(cameraId: String) {}
+            override suspend fun refresh() {}
+        }
+        val v = CamerasViewModel(cameraRepository = repo)
+        val job = launch { v.filteredCameras.collect { } }
+        advanceUntilIdle()
+        assertNull(v.error.value)
+        assertFalse(v.isLoading.value)
+        job.cancel()
+    }
+
     // ── Helper ────────────────────────────────────────────────────────────────
 
     private fun camera(id: String, name: String, status: CameraStatus) = CameraUiItem(
