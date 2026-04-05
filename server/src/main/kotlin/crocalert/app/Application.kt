@@ -72,6 +72,18 @@ fun Application.configureErrorHandling() {
                 mapOf("error" to (cause.message ?: "Bad request"))
             )
         }
+        exception<IllegalArgumentException> { call, cause ->
+            call.respond(
+                HttpStatusCode.BadRequest,
+                mapOf("error" to (cause.message ?: "Invalid request parameter"))
+            )
+        }
+        exception<IllegalStateException> { call, cause ->
+            call.respond(
+                HttpStatusCode.BadRequest,
+                mapOf("error" to (cause.message ?: "Invalid state transition"))
+            )
+        }
         exception<UnsupportedMediaTypeException> { call, cause ->
             call.respond(
                 HttpStatusCode.BadRequest,

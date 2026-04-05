@@ -2,6 +2,9 @@ package crocalert.server.service
 
 import com.google.cloud.Timestamp
 import com.google.cloud.firestore.DocumentSnapshot
+import crocalert.app.domain.AlertStatusValidator
+import crocalert.app.model.AlertPriority
+import crocalert.app.model.AlertStatus
 import crocalert.app.shared.data.dto.AlertDto
 import crocalert.server.FirebaseInit
 import kotlinx.coroutines.Dispatchers
@@ -11,7 +14,6 @@ import java.util.UUID
 class AlertService : AlertServicePort {
 
     private val db by lazy { FirebaseInit.firestore() }
-    private val col by lazy { db.collection("alerts") }
     private val capturesCol by lazy { db.collection("imagenes_drive") }
 
     override suspend fun getAll(since: Long?): List<AlertDto> {
@@ -19,7 +21,7 @@ class AlertService : AlertServicePort {
             Timestamp.ofTimeSecondsAndNanos(it / 1000, ((it % 1000) * 1_000_000).toInt())
         }
         fun query(folder: String) = if (sinceTs != null)
-            capturesCol.whereEqualTo("folder", folder).whereGreaterThan("captureTime", sinceTs)
+            capturesCol.whereEqualTo("folder", folder).whereGreaterThan("syncedAt", sinceTs)
         else
             capturesCol.whereEqualTo("folder", folder)
 
@@ -39,27 +41,43 @@ class AlertService : AlertServicePort {
             id = id,
             captureId = dto.captureId.ifBlank { "" },
             createdAt = if (dto.createdAt == 0L) System.currentTimeMillis() else dto.createdAt,
-            status = dto.status.ifBlank { "OPEN" },
-            priority = dto.priority.ifBlank { "MEDIUM" }
+            status = dto.status.ifBlank { AlertStatus.OPEN.name },
+            priority = dto.priority.ifBlank { AlertPriority.MEDIUM.name }
         )
-        withContext(Dispatchers.IO) { col.document(id).set(normalized).get() }
+        withContext(Dispatchers.IO) { capturesCol.document(id).set(normalized).get() }
         return id
     }
 
     override suspend fun update(id: String, dto: AlertDto): Boolean {
+        val newStatus = dto.status.takeUnless { it.isBlank() }?.let { s ->
+            AlertStatus.entries.firstOrNull { it.name == s }
+                ?: throw IllegalArgumentException("Unknown alert status: '$s'. Valid values: ${AlertStatus.entries.map { it.name }}")
+        }
+        val newPriority = dto.priority.takeUnless { it.isBlank() }?.let { p ->
+            AlertPriority.entries.firstOrNull { it.name == p }
+                ?: throw IllegalArgumentException("Unknown alert priority: '$p'. Valid values: ${AlertPriority.entries.map { it.name }}")
+        }
+
         val ref = capturesCol.document(id)
         return withContext(Dispatchers.IO) {
             db.runTransaction { transaction ->
                 val snapshot = transaction.get(ref).get()
                 if (!snapshot.exists()) return@runTransaction false
+
+                val currentStatusStr = snapshot.getString("status") ?: AlertStatus.OPEN.name
+                val currentStatus = AlertStatus.entries.firstOrNull { it.name == currentStatusStr }
+                    ?: AlertStatus.OPEN
+                if (newStatus != null && newStatus != currentStatus) {
+                    AlertStatusValidator.requireValidTransition(currentStatus, newStatus)
+                }
+
                 val normalized = dto.copy(
                     id = id,
                     captureId = dto.captureId.ifBlank { "" },
                     createdAt = if (dto.createdAt == 0L) System.currentTimeMillis() else dto.createdAt,
-                    // Preserve the document's existing value instead of defaulting to "OPEN"/"MEDIUM",
-                    // preventing a blank-field PUT from accidentally reopening a closed alert.
-                    status = dto.status.ifBlank { snapshot.getString("status") ?: "OPEN" },
-                    priority = dto.priority.ifBlank { snapshot.getString("priority") ?: "MEDIUM" }
+                    // Preserve existing value when field is blank — prevents accidental reopening.
+                    status = newStatus?.name ?: (snapshot.getString("status") ?: AlertStatus.OPEN.name),
+                    priority = newPriority?.name ?: (snapshot.getString("priority") ?: AlertPriority.MEDIUM.name)
                 )
                 transaction.set(ref, normalized)
                 true
@@ -85,13 +103,11 @@ class AlertService : AlertServicePort {
             id = id,
             captureId = id,
             cameraId = getString("cameraId") ?: "",
-            createdAt = getTimestamp("captureTime")?.toDate()?.time
-                ?: getLong("captureTime")
-                ?: getTimestamp("syncedAt")?.toDate()?.time
+            createdAt = getTimestamp("syncedAt")?.toDate()?.time
                 ?: getLong("syncedAt")
                 ?: 0L,
-            status = "OPEN",
-            priority = if (folder == "alertas") "HIGH" else "MEDIUM",
+            status = AlertStatus.OPEN.name,
+            priority = if (folder == "alertas") AlertPriority.HIGH.name else AlertPriority.MEDIUM.name,
             title = getString("name") ?: "",
             folder = folder,
         )
