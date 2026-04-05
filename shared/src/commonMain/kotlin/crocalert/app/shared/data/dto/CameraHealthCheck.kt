@@ -11,7 +11,7 @@ data class CameraHealthCheckDto(
     val missingImages: Int,
     val extraImages: Int,
     val captureRate: Double,
-    val healthStatus: String,
+    val healthStatus: HealthStatus,
     val isActive: Boolean,
     val installedAt: Long? = null
 )
