@@ -8,6 +8,8 @@ import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 
+private val DATE_REGEX = Regex("^\\d{4}-\\d{2}-\\d{2}$")
+
 fun Route.cameraRoutes(service: CameraServicePort) {
 
     route("/cameras") {
@@ -78,6 +80,46 @@ fun Route.cameraRoutes(service: CameraServicePort) {
                 ?: return@get call.respond(HttpStatusCode.BadRequest, "Missing date")
 
             call.respond(service.getDailyStatsForAll(date))
+        }
+        get("global-daily-rate/{date}") {
+            val date = call.parameters["date"]
+                ?: return@get call.respond(HttpStatusCode.BadRequest, "Missing date")
+            if (!DATE_REGEX.matches(date))
+                return@get call.respond(HttpStatusCode.BadRequest, "Invalid date format, expected yyyy-MM-dd")
+
+            call.respond(service.getGlobalDailyCaptureRate(date))
+        }
+
+        get("{id}/health-check/{date}") {
+            val cameraId = call.parameters["id"]
+                ?: return@get call.respond(HttpStatusCode.BadRequest, "Missing camera id")
+            val date = call.parameters["date"]
+                ?: return@get call.respond(HttpStatusCode.BadRequest, "Missing date")
+            if (!DATE_REGEX.matches(date))
+                return@get call.respond(HttpStatusCode.BadRequest, "Invalid date format, expected yyyy-MM-dd")
+
+            val result = service.getCameraHealthCheck(cameraId, date)
+                ?: return@get call.respond(HttpStatusCode.NotFound, "Camera '$cameraId' not found")
+
+            call.respond(result)
+        }
+
+        get("health-checks/{date}") {
+            val date = call.parameters["date"]
+                ?: return@get call.respond(HttpStatusCode.BadRequest, "Missing date")
+            if (!DATE_REGEX.matches(date))
+                return@get call.respond(HttpStatusCode.BadRequest, "Invalid date format, expected yyyy-MM-dd")
+
+            call.respond(service.getAllCameraHealthChecks(date))
+        }
+
+        get("dashboard/{date}") {
+            val date = call.parameters["date"]
+                ?: return@get call.respond(HttpStatusCode.BadRequest, "Missing date")
+            if (!DATE_REGEX.matches(date))
+                return@get call.respond(HttpStatusCode.BadRequest, "Invalid date format, expected yyyy-MM-dd")
+
+            call.respond(service.getMonitoringDashboard(date))
         }
     }
 }
