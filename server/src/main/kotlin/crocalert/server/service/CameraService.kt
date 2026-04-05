@@ -9,6 +9,7 @@ import crocalert.app.shared.data.dto.CameraDailyStatsDto
 import crocalert.app.shared.data.dto.CameraHealthCheckDto
 import crocalert.app.shared.data.dto.CameraMonitoringDashboardDto
 import crocalert.app.shared.data.dto.GlobalDailyCaptureRateDto
+import crocalert.app.shared.data.dto.HealthStatus
 
 class CameraService : CameraServicePort {
 
@@ -27,7 +28,7 @@ class CameraService : CameraServicePort {
             siteId = (get("siteId") as? DocumentReference)?.path ?: getString("siteId"),
             createdAt = created,
             installedAt = installed,
-            expectedImages = (getLong("expectedImages") ?: getLong("excpectedImages"))?.toInt()
+            expectedImages = getLong("expectedImages")?.toInt()
         )
     }
 
@@ -126,10 +127,7 @@ class CameraService : CameraServicePort {
 
         val isActive = cameraDoc.getBoolean("isActive") ?: true
         val installedAt = cameraDoc.getTimestamp("installedAt")?.toDate()?.time
-        val expectedImages =
-            cameraDoc.getLong("expectedImages")?.toInt()
-                ?: cameraDoc.getLong("excpectedImages")?.toInt()
-                ?: 0
+        val expectedImages = cameraDoc.getLong("expectedImages")?.toInt() ?: 0
 
         val dayDoc = imagesPerDayCol.document(date).get().get()
 
@@ -165,10 +163,7 @@ class CameraService : CameraServicePort {
 
         return camerasSnap.documents.map { cameraDoc ->
             val cameraId = cameraDoc.id
-            val expectedImages =
-                cameraDoc.getLong("expectedImages")?.toInt()
-                    ?: cameraDoc.getLong("excpectedImages")?.toInt()
-                    ?: 0
+            val expectedImages = cameraDoc.getLong("expectedImages")?.toInt() ?: 0
 
             val receivedImages = (imagesMap[cameraId] as? Number)?.toInt() ?: 0
             val missingImages = (expectedImages - receivedImages).coerceAtLeast(0)
@@ -195,13 +190,11 @@ class CameraService : CameraServicePort {
         }
 
         val totalCameras = camerasSnap.documents.size
-        val activeCameraDocs = camerasSnap.documents.filter { it.getBoolean("isActive") ?: true }
+        val activeCameraDocs = camerasSnap.documents.filter { it.getBoolean("isActive") ?: false }
         val activeCameras = activeCameraDocs.size
 
         val expectedImagesTotal = activeCameraDocs.sumOf { cameraDoc ->
-            cameraDoc.getLong("expectedImages")?.toInt()
-                ?: cameraDoc.getLong("excpectedImages")?.toInt()
-                ?: 0
+            cameraDoc.getLong("expectedImages")?.toInt() ?: 0
         }
 
         val receivedImagesTotal = activeCameraDocs.sumOf { cameraDoc ->
@@ -229,11 +222,11 @@ class CameraService : CameraServicePort {
             captureRate = captureRate
         )
     }
-    private fun calculateHealthStatus(captureRate: Double): String {
+    private fun calculateHealthStatus(captureRate: Double): HealthStatus {
         return when {
-            captureRate >= 97.5 -> "HEALTHY"
-            captureRate >= 90.0 -> "CAUTION"
-            else -> "RISK"
+            captureRate >= 97.5 -> HealthStatus.HEALTHY
+            captureRate >= 90.0 -> HealthStatus.CAUTION
+            else -> HealthStatus.RISK
         }
     }
     override suspend fun getAllCameraHealthChecks(date: String): List<CameraHealthCheckDto> {
@@ -304,9 +297,9 @@ class CameraService : CameraServicePort {
             (receivedImagesTotal.toDouble() / expectedImagesTotal.toDouble()) * 100.0
         } else 0.0
 
-        val healthyCameras = activeCameraChecks.count { it.healthStatus == "HEALTHY" }
-        val cautionCameras = activeCameraChecks.count { it.healthStatus == "CAUTION" }
-        val riskCameras = activeCameraChecks.count { it.healthStatus == "RISK" }
+        val healthyCameras = activeCameraChecks.count { it.healthStatus == HealthStatus.HEALTHY }
+        val cautionCameras = activeCameraChecks.count { it.healthStatus == HealthStatus.CAUTION }
+        val riskCameras = activeCameras - healthyCameras - cautionCameras
 
         val healthyRate = if (activeCameras > 0) {
             (healthyCameras.toDouble() / activeCameras.toDouble()) * 100.0
@@ -330,6 +323,7 @@ class CameraService : CameraServicePort {
             riskCameras = riskCameras,
             healthyRate = healthyRate,
             operationalRate = operationalRate,
+            // inactive cameras are included so clients can show them as offline without a second request
             cameras = cameraHealthChecks
         )
     }
