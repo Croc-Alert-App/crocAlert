@@ -2,6 +2,7 @@ plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
+    id("com.google.gms.google-services")
 }
 
 android {
@@ -33,6 +34,8 @@ android {
 dependencies {
     implementation(project(":composeApp"))
     implementation(project(":shared"))
+    implementation(platform(libs.firebaseBom))
+    implementation(libs.firebaseAuthKtx)
     implementation("androidx.activity:activity-compose:1.9.0")
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidxTestExtJunit)

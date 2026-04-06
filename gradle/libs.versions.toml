@@ -40,6 +40,9 @@ datastore   = "1.1.1"
 junit = "4.13.2"
 turbine = "1.2.0"
 kover = "0.8.3"
+googleServices = "4.4.2"
+firebaseBom    = "33.1.0"
+firebaseAuth   = "23.0.0"
 
 [libraries]
 # ---------- Android core ----------
@@ -119,6 +122,11 @@ androidxEspressoCore = "androidx.test.espresso:espresso-core:3.5.1"
 ktorClientMock = { module = "io.ktor:ktor-client-mock", version.ref = "ktor" }
 turbine = { module = "app.cash.turbine:turbine", version.ref = "turbine" }
 
+# ---------- Firebase ----------
+firebaseBom                   = { module = "com.google.firebase:firebase-bom",             version.ref = "firebaseBom" }
+firebaseAuthKtx               = { module = "com.google.firebase:firebase-auth-ktx",          version.ref = "firebaseAuth" }
+kotlinxCoroutinesPlayServices = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-play-services", version.ref = "kotlinxCoroutines" }
+
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }
 androidLibrary = { id = "com.android.library", version.ref = "agp" }
@@ -131,3 +139,4 @@ composeCompiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "k
 kotlinSerialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 kover = { id = "org.jetbrains.kotlinx.kover", version.ref = "kover" }
 sqldelight = { id = "app.cash.sqldelight", version.ref = "sqldelight" }
+googleServices = { id = "com.google.gms.google-services", version.ref = "googleServices" }

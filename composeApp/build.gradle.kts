@@ -40,6 +40,8 @@ kotlin {
             implementation(libs.androidxActivityCompose)
             implementation(libs.composeUiToolingPreview)
             implementation(libs.koinAndroidxCompose)
+            implementation(libs.firebaseAuthKtx)
+            implementation(libs.kotlinxCoroutinesPlayServices)
         }
 
         commonMain.dependencies {
