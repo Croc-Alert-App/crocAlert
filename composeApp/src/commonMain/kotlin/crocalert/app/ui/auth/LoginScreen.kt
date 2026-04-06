@@ -38,12 +38,15 @@ private val EMAIL_REGEX = Regex("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}
 
 @Composable
 fun LoginScreen(
+    isLoading: Boolean = false,
+    error: String? = null,
     onLogin: (email: String, password: String, rememberDevice: Boolean) -> Unit,
     onRegister: () -> Unit,
     onForgotPassword: () -> Unit,
+    onErrorDismiss: () -> Unit = {},
 ) {
-    var email by remember { mutableStateOf(FakeAuth.EMAIL) }
-    var password by remember { mutableStateOf(FakeAuth.PASSWORD) }
+    var email by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
     var rememberDevice by remember { mutableStateOf(false) }
 
     val emailError = if (email.isNotEmpty() && !email.matches(EMAIL_REGEX))
@@ -67,7 +70,7 @@ fun LoginScreen(
         Spacer(Modifier.height(32.dp))
         CrocAlertTextField(
             value = email,
-            onValueChange = { email = it },
+            onValueChange = { email = it; onErrorDismiss() },
             label = "CORREO ELECTRONICO",
             placeholder = "worker@sinac.go.cr",
             keyboardType = KeyboardType.Email,
@@ -77,7 +80,7 @@ fun LoginScreen(
         Spacer(Modifier.height(16.dp))
         CrocAlertPasswordField(
             value = password,
-            onValueChange = { password = it },
+            onValueChange = { password = it; onErrorDismiss() },
             label = "CONTRASEÑA",
         )
         Spacer(Modifier.height(12.dp))
@@ -109,11 +112,19 @@ fun LoginScreen(
                 modifier = Modifier.clickable { onForgotPassword() },
             )
         }
+        if (error != null) {
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = error,
+                fontSize = 13.sp,
+                color = androidx.compose.ui.graphics.Color.Red,
+            )
+        }
         Spacer(Modifier.height(24.dp))
         CrocAlertPrimaryButton(
-            text = "Iniciar sesión",
+            text = if (isLoading) "Iniciando sesión..." else "Iniciar sesión",
             onClick = { onLogin(email, password, rememberDevice) },
-            enabled = isFormValid,
+            enabled = isFormValid && !isLoading,
         )
         Spacer(Modifier.height(16.dp))
         AuthDivider()

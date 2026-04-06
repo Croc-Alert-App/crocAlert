@@ -43,11 +43,14 @@ private val MfaBannerColor = Color(0xFFD6E8FF)
 @Composable
 fun MfaScreen(
     maskedDevice: String = "••89",
+    isLoading: Boolean = false,
+    error: String? = null,
     onVerify: (code: String) -> Unit,
     onResend: () -> Unit,
     onUseBackupCode: () -> Unit,
+    onErrorDismiss: () -> Unit = {},
 ) {
-    var otp by remember { mutableStateOf(FakeAuth.OTP) }
+    var otp by remember { mutableStateOf("") }
     var countdownSeconds by remember { mutableStateOf(42) }
 
     LaunchedEffect(Unit) {
@@ -96,13 +99,22 @@ fun MfaScreen(
             Spacer(Modifier.height(32.dp))
             OtpInputField(
                 value = otp,
-                onValueChange = { otp = it },
+                onValueChange = { otp = it; onErrorDismiss() },
             )
+            if (error != null) {
+                Spacer(Modifier.height(12.dp))
+                Text(
+                    text = error,
+                    fontSize = 13.sp,
+                    color = androidx.compose.ui.graphics.Color.Red,
+                    textAlign = TextAlign.Center,
+                )
+            }
             Spacer(Modifier.height(32.dp))
             CrocAlertPrimaryButton(
-                text = "Verify Code",
+                text = if (isLoading) "Verificando..." else "Verify Code",
                 onClick = { onVerify(otp) },
-                enabled = otp.length == 6,
+                enabled = otp.length == 6 && !isLoading,
             )
             Spacer(Modifier.height(20.dp))
             ResendRow(
