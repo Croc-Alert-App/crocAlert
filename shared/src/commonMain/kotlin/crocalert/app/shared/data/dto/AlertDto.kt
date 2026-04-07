@@ -14,6 +14,7 @@ data class AlertDto(
     val assignedToUserId: String? = null,
     val closedAt: Long? = null,
     val notes: String? = null,
+    val thumbnailUrl: String? = null,
     val title: String = "",
     val folder: String? = null,
 )
