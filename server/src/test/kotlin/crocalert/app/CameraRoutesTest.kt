@@ -1,6 +1,11 @@
 package crocalert.app
 
 import crocalert.app.shared.data.dto.CameraDto
+import crocalert.app.shared.data.dto.CameraDailyStatsDto
+import crocalert.app.shared.data.dto.CameraHealthCheckDto
+import crocalert.app.shared.data.dto.CameraMonitoringDashboardDto
+import crocalert.app.shared.data.dto.GlobalDailyCaptureRateDto
+import crocalert.app.shared.data.dto.HealthStatus
 import crocalert.server.service.CameraServicePort
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
@@ -15,7 +20,8 @@ class CameraRoutesTest {
     // ── Fake service ──────────────────────────────────────────────────────────
 
     private class FakeCameraService(
-        private val cameras: MutableList<CameraDto> = mutableListOf()
+        private val cameras: MutableList<CameraDto> = mutableListOf(),
+        private val healthCheck: CameraHealthCheckDto? = defaultHealthCheck(),
     ) : CameraServicePort {
         override suspend fun getAll() = cameras.toList()
         override suspend fun getById(id: String) = cameras.firstOrNull { it.id == id }
@@ -32,7 +38,32 @@ class CameraRoutesTest {
         }
         override suspend fun delete(id: String): Boolean = cameras.removeIf { it.id == id }
         override suspend fun getDailyStats(cameraId: String, date: String) = null
-        override suspend fun getDailyStatsForAll(date: String) = emptyList<crocalert.app.shared.data.dto.CameraDailyStatsDto>()
+        override suspend fun getDailyStatsForAll(date: String) = emptyList<CameraDailyStatsDto>()
+        override suspend fun getGlobalDailyCaptureRate(date: String) = GlobalDailyCaptureRateDto(
+            date = date, totalCameras = 2, activeCameras = 2,
+            expectedImagesTotal = 20, receivedImagesTotal = 18,
+            missingImagesTotal = 2, extraImagesTotal = 0, captureRate = 90.0
+        )
+        override suspend fun getCameraHealthCheck(cameraId: String, date: String) = healthCheck
+        override suspend fun getAllCameraHealthChecks(date: String) =
+            if (healthCheck != null) listOf(healthCheck) else emptyList()
+        override suspend fun getMonitoringDashboard(date: String) = CameraMonitoringDashboardDto(
+            date = date, totalCameras = 2, activeCameras = 2,
+            expectedImagesTotal = 20, receivedImagesTotal = 18,
+            missingImagesTotal = 2, extraImagesTotal = 0, globalCaptureRate = 90.0,
+            healthyCameras = 1, cautionCameras = 1, riskCameras = 0,
+            healthyRate = 50.0, operationalRate = 100.0,
+            cameras = if (healthCheck != null) listOf(healthCheck) else emptyList()
+        )
+
+        companion object {
+            fun defaultHealthCheck() = CameraHealthCheckDto(
+                cameraId = "cam-1", date = "2026-03-17",
+                expectedImages = 10, receivedImages = 10, missingImages = 0,
+                extraImages = 0, captureRate = 100.0,
+                healthStatus = HealthStatus.HEALTHY, isActive = true
+            )
+        }
     }
 
     // ── Test application builder ───────────────────────────────────────────────
@@ -134,5 +165,78 @@ class CameraRoutesTest {
     fun `DELETE cameras by unknown id returns 404`() = testApp(FakeCameraService()) {
         val response = client.delete("/cameras/no-such-cam")
         assertEquals(HttpStatusCode.NotFound, response.status)
+    }
+
+    // ── GET /cameras/global-daily-rate/{date} ─────────────────────────────────
+
+    @Test
+    fun `GET global-daily-rate with valid date returns 200`() = testApp {
+        val response = client.get("/cameras/global-daily-rate/2026-03-17")
+        assertEquals(HttpStatusCode.OK, response.status)
+        assertTrue(response.bodyAsText().contains("captureRate"))
+    }
+
+    @Test
+    fun `GET global-daily-rate with invalid date format returns 400`() = testApp {
+        val response = client.get("/cameras/global-daily-rate/17-03-2026")
+        assertEquals(HttpStatusCode.BadRequest, response.status)
+        assertTrue(response.bodyAsText().contains("yyyy-MM-dd"))
+    }
+
+    // ── GET /cameras/{id}/health-check/{date} ────────────────────────────────
+
+    @Test
+    fun `GET camera health-check with valid date returns 200`() = testApp {
+        val response = client.get("/cameras/cam-1/health-check/2026-03-17")
+        assertEquals(HttpStatusCode.OK, response.status)
+        assertTrue(response.bodyAsText().contains("SALUDABLE"))
+    }
+
+    @Test
+    fun `GET camera health-check for unknown camera returns 404 with camera id`() = testApp(
+        FakeCameraService(healthCheck = null)
+    ) {
+        val response = client.get("/cameras/no-such-cam/health-check/2026-03-17")
+        assertEquals(HttpStatusCode.NotFound, response.status)
+        assertTrue(response.bodyAsText().contains("no-such-cam"))
+    }
+
+    @Test
+    fun `GET camera health-check with invalid date format returns 400`() = testApp {
+        val response = client.get("/cameras/cam-1/health-check/2026-3-17")
+        assertEquals(HttpStatusCode.BadRequest, response.status)
+        assertTrue(response.bodyAsText().contains("yyyy-MM-dd"))
+    }
+
+    // ── GET /cameras/health-checks/{date} ────────────────────────────────────
+
+    @Test
+    fun `GET all health-checks with valid date returns 200`() = testApp {
+        val response = client.get("/cameras/health-checks/2026-03-17")
+        assertEquals(HttpStatusCode.OK, response.status)
+        assertTrue(response.bodyAsText().contains("SALUDABLE"))
+    }
+
+    @Test
+    fun `GET all health-checks with invalid date format returns 400`() = testApp {
+        val response = client.get("/cameras/health-checks/20260317")
+        assertEquals(HttpStatusCode.BadRequest, response.status)
+        assertTrue(response.bodyAsText().contains("yyyy-MM-dd"))
+    }
+
+    // ── GET /cameras/dashboard/{date} ─────────────────────────────────────────
+
+    @Test
+    fun `GET dashboard with valid date returns 200`() = testApp {
+        val response = client.get("/cameras/dashboard/2026-03-17")
+        assertEquals(HttpStatusCode.OK, response.status)
+        assertTrue(response.bodyAsText().contains("globalCaptureRate"))
+    }
+
+    @Test
+    fun `GET dashboard with invalid date format returns 400`() = testApp {
+        val response = client.get("/cameras/dashboard/today")
+        assertEquals(HttpStatusCode.BadRequest, response.status)
+        assertTrue(response.bodyAsText().contains("yyyy-MM-dd"))
     }
 }
