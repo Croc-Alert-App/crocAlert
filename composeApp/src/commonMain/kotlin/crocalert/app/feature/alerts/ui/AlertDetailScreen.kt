@@ -113,7 +113,6 @@ private fun AlertDetailContent(
         else -> "Alerta"
     }
 
-    // 🔥 AQUÍ ESTÁ LA MAGIA (folder-based)
     val badgeLabel = when (alert.folder) {
         "alertas" -> "Alerta"
         "pre-alertas" -> "Pre-Alerta"
