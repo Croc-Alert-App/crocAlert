@@ -25,4 +25,8 @@ class ProfileViewModel(
     fun setCamerasTtl(minutes: Int) {
         viewModelScope.launch { syncPrefsProvider.setCamerasTtl(minutes.coerceIn(1, 120)) }
     }
+
+    fun setAlertWindowDays(days: Int) {
+        viewModelScope.launch { syncPrefsProvider.setAlertWindowDays(days) }
+    }
 }
