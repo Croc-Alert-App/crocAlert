@@ -15,6 +15,7 @@ import crocalert.app.ui.auth.AuthViewModel
 import crocalert.app.ui.auth.ForgotPasswordScreen
 import crocalert.app.ui.auth.LoginScreen
 import crocalert.app.ui.auth.MfaScreen
+import crocalert.app.ui.auth.MfaSetupScreen
 import crocalert.app.ui.auth.RegisterScreen
 import crocalert.app.ui.auth.SessionManager
 import crocalert.app.ui.auth.SplashScreen
@@ -30,6 +31,11 @@ fun App() {
     val loginError by authViewModel.loginError.collectAsState()
     val mfaError by authViewModel.mfaError.collectAsState()
     val isLoading by authViewModel.isLoading.collectAsState()
+    val registerError by authViewModel.registerError.collectAsState()
+    val registerSuccess by authViewModel.registerSuccess.collectAsState()
+    val totpSetup by authViewModel.totpSetup.collectAsState()
+    val totpSetupError by authViewModel.totpSetupError.collectAsState()
+    val enrollError by authViewModel.enrollError.collectAsState()
 
     NavHost(navController = navController, startDestination = "splash") {
         composable("splash") {
@@ -52,6 +58,11 @@ fun App() {
                                 popUpTo("login") { inclusive = false }
                             }
                         },
+                        onMfaEnrollmentRequired = {
+                            navController.navigate("mfa_setup") {
+                                popUpTo("login") { inclusive = false }
+                            }
+                        },
                         onSuccess = {
                             navController.navigate("home") {
                                 popUpTo("login") { inclusive = true }
@@ -66,7 +77,19 @@ fun App() {
         }
         composable("register") {
             RegisterScreen(
-                onRegister = { _, _, _, _, _ -> navController.popBackStack() },
+                isLoading = isLoading,
+                registerError = registerError,
+                registerSuccess = registerSuccess,
+                onRegister = { nombre, apellidos, email, rol, password ->
+                    authViewModel.register(nombre, apellidos, email, rol, password)
+                },
+                onSuccessDismiss = {
+                    authViewModel.clearRegisterSuccess()
+                    navController.navigate("login") {
+                        popUpTo("register") { inclusive = true }
+                    }
+                },
+                onErrorDismiss = { authViewModel.clearRegisterError() },
             )
         }
         composable("forgot_password") {
@@ -86,6 +109,24 @@ fun App() {
                 onResend = {},
                 onUseBackupCode = {},
                 onErrorDismiss = { authViewModel.clearMfaError() },
+            )
+        }
+        composable("mfa_setup") {
+            MfaSetupScreen(
+                isLoading = isLoading,
+                setupData = totpSetup,
+                setupError = totpSetupError,
+                enrollError = enrollError,
+                onGenerateSetup = { authViewModel.generateTotpSetup() },
+                onEnroll = { otp ->
+                    authViewModel.enrollTotp(otp) {
+                        authViewModel.clearTotpSetup()
+                        navController.navigate("home") {
+                            popUpTo("login") { inclusive = true }
+                        }
+                    }
+                },
+                onEnrollErrorDismiss = { authViewModel.clearEnrollError() },
             )
         }
         composable("home") {

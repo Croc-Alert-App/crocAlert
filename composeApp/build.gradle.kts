@@ -58,6 +58,7 @@ kotlin {
             implementation(compose.materialIconsExtended)
             implementation(libs.kotlinxDatetime)
             implementation(libs.kotlinxCoroutinesCore)
+            implementation(libs.qrose)
 
             implementation(project.dependencies.platform(libs.koinBom))
             implementation(libs.koinCore)

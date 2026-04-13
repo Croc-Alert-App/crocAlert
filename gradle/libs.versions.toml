@@ -43,6 +43,7 @@ kover = "0.8.3"
 googleServices = "4.4.2"
 firebaseBom    = "33.1.0"
 firebaseAuth   = "23.0.0"
+qrose          = "1.0.1"
 
 [libraries]
 # ---------- Android core ----------
@@ -126,6 +127,7 @@ turbine = { module = "app.cash.turbine:turbine", version.ref = "turbine" }
 firebaseBom                   = { module = "com.google.firebase:firebase-bom",             version.ref = "firebaseBom" }
 firebaseAuthKtx               = { module = "com.google.firebase:firebase-auth-ktx",          version.ref = "firebaseAuth" }
 kotlinxCoroutinesPlayServices = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-play-services", version.ref = "kotlinxCoroutines" }
+qrose                         = { module = "io.github.alexzhirkevich:qrose",                  version.ref = "qrose" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }
