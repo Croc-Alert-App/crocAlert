@@ -3,7 +3,9 @@ package crocalert.app
 import crocalert.app.domain.repository.CameraRepository
 import crocalert.app.model.Camera
 import crocalert.app.shared.data.dto.CameraDailyStatsDto
+import crocalert.app.shared.data.dto.CameraMonitoringDashboardDto
 import crocalert.app.shared.data.dto.CaptureDto
+import crocalert.app.shared.data.dto.GlobalDailyCaptureRateDto
 import crocalert.app.shared.network.ApiResult
 import crocalert.app.ui.cameras.CameraFilter
 import crocalert.app.ui.cameras.CameraStatus
@@ -40,6 +42,8 @@ class CamerasViewModelTest {
         override suspend fun getCapturesByCamera(cameraId: String): ApiResult<List<CaptureDto>> = ApiResult.Success(emptyList())
         override suspend fun getDailyStats(cameraId: String, date: String): ApiResult<CameraDailyStatsDto> = ApiResult.Error("not implemented", 501)
         override suspend fun getDailyStatsForAll(date: String): ApiResult<List<CameraDailyStatsDto>> = ApiResult.Success(emptyList())
+        override suspend fun getMonitoringDashboard(date: String): ApiResult<CameraMonitoringDashboardDto> = ApiResult.Error("not implemented", 501)
+        override suspend fun getGlobalCaptureRate(date: String): ApiResult<GlobalDailyCaptureRateDto> = ApiResult.Error("not implemented", 501)
         override suspend fun createCamera(camera: Camera): String = ""
         override suspend fun updateCamera(camera: Camera) {}
         override suspend fun deleteCamera(cameraId: String) {}
@@ -310,6 +314,8 @@ class CamerasViewModelTest {
                 statsCalled = true
                 return ApiResult.Success(emptyList())
             }
+            override suspend fun getMonitoringDashboard(date: String): ApiResult<CameraMonitoringDashboardDto> = ApiResult.Error("n/a", 501)
+            override suspend fun getGlobalCaptureRate(date: String): ApiResult<GlobalDailyCaptureRateDto> = ApiResult.Error("n/a", 501)
             override suspend fun createCamera(camera: Camera): String = ""
             override suspend fun updateCamera(camera: Camera) {}
             override suspend fun deleteCamera(cameraId: String) {}
@@ -333,6 +339,8 @@ class CamerasViewModelTest {
             override suspend fun getDailyStats(cameraId: String, date: String): ApiResult<CameraDailyStatsDto> = ApiResult.Error("n/a", 501)
             override suspend fun getDailyStatsForAll(date: String): ApiResult<List<CameraDailyStatsDto>> =
                 ApiResult.Error("network error", 503)
+            override suspend fun getMonitoringDashboard(date: String): ApiResult<CameraMonitoringDashboardDto> = ApiResult.Error("n/a", 501)
+            override suspend fun getGlobalCaptureRate(date: String): ApiResult<GlobalDailyCaptureRateDto> = ApiResult.Error("n/a", 501)
             override suspend fun createCamera(camera: Camera): String = ""
             override suspend fun updateCamera(camera: Camera) {}
             override suspend fun deleteCamera(cameraId: String) {}
@@ -357,6 +365,8 @@ class CamerasViewModelTest {
             override suspend fun getDailyStats(cameraId: String, date: String): ApiResult<CameraDailyStatsDto> = ApiResult.Error("n/a", 501)
             override suspend fun getDailyStatsForAll(date: String): ApiResult<List<CameraDailyStatsDto>> =
                 ApiResult.Success(listOf(stats))
+            override suspend fun getMonitoringDashboard(date: String): ApiResult<CameraMonitoringDashboardDto> = ApiResult.Error("n/a", 501)
+            override suspend fun getGlobalCaptureRate(date: String): ApiResult<GlobalDailyCaptureRateDto> = ApiResult.Error("n/a", 501)
             override suspend fun createCamera(camera: Camera): String = ""
             override suspend fun updateCamera(camera: Camera) {}
             override suspend fun deleteCamera(cameraId: String) {}
