@@ -7,6 +7,8 @@ import com.google.firebase.auth.MultiFactorResolver
 import com.google.firebase.auth.TotpMultiFactorGenerator
 import com.google.firebase.auth.TotpMultiFactorInfo
 import com.google.firebase.auth.TotpSecret
+import com.google.firebase.auth.UserProfileChangeRequest
+import crocalert.app.shared.UserSession
 import kotlinx.coroutines.tasks.await
 
 actual object FirebaseAuthClient {
@@ -19,23 +21,25 @@ actual object FirebaseAuthClient {
             FirebaseAuth.getInstance().signInWithEmailAndPassword(email, password).await()
             val user = FirebaseAuth.getInstance().currentUser
 
-            // Gate 1: email must be verified.
-            // We intentionally do NOT sign out here — keeping the session alive so
-            // sendVerificationEmail() can use currentUser if the user requests a resend.
             if (user?.isEmailVerified == false) {
                 return AuthSignInResult.EmailNotVerified
             }
 
-            // Gate 2: TOTP MFA must be enrolled.
+            // Read the `role` custom claim from the ID token (set via Firebase Admin SDK/console).
+            // This is the authoritative role source for accounts that predate displayName encoding.
+            // forceRefresh=true ensures we get a fresh token with the latest custom claims,
+            // not a cached one that may predate an admin role assignment.
+            val roleFromClaims = user?.getIdToken(true)?.await()?.claims?.get("role") as? String
+
             val enrolled = user?.multiFactor?.enrolledFactors
             if (enrolled.isNullOrEmpty()) {
+                UserSession.populate(user?.displayName, user?.email ?: email, roleFromClaims)
                 AuthSignInResult.MfaEnrollmentRequired
             } else {
+                UserSession.populate(user?.displayName, user?.email ?: email, roleFromClaims)
                 AuthSignInResult.Success
             }
         } catch (e: FirebaseAuthMultiFactorException) {
-            // MFA already enrolled — Firebase is asking us to verify it.
-            // Email is implicitly verified (Firebase enforces this for MFA enrollment).
             pendingResolver = e.resolver
             AuthSignInResult.MfaRequired
         } catch (e: FirebaseAuthException) {
@@ -45,12 +49,23 @@ actual object FirebaseAuthClient {
         }
     }
 
-    actual suspend fun register(email: String, password: String): AuthSignInResult {
+    actual suspend fun register(
+        email: String,
+        password: String,
+        fullName: String,
+        role: String,
+    ): AuthSignInResult {
         return try {
             FirebaseAuth.getInstance().createUserWithEmailAndPassword(email, password).await()
-            // Immediately send verification email, then sign out so the user
-            // cannot access the app until they verify.
-            FirebaseAuth.getInstance().currentUser?.sendEmailVerification()?.await()
+            val user = FirebaseAuth.getInstance().currentUser
+
+            // Store full name + role in Firebase displayName as "FullName::Role"
+            val profileUpdate = UserProfileChangeRequest.Builder()
+                .setDisplayName(UserSession.encode(fullName, role))
+                .build()
+            user?.updateProfile(profileUpdate)?.await()
+
+            user?.sendEmailVerification()?.await()
             FirebaseAuth.getInstance().signOut()
             AuthSignInResult.Success
         } catch (e: FirebaseAuthException) {
@@ -67,7 +82,6 @@ actual object FirebaseAuthClient {
             )
         return try {
             user.sendEmailVerification().await()
-            // Sign out after sending — the session was only kept alive for this call.
             FirebaseAuth.getInstance().signOut()
             AuthSignInResult.Success
         } catch (e: FirebaseAuthException) {
@@ -94,6 +108,12 @@ actual object FirebaseAuthClient {
             val assertion = TotpMultiFactorGenerator.getAssertionForSignIn(hint.uid, otp)
             resolver.resolveSignIn(assertion).await()
             pendingResolver = null
+            // Populate session after TOTP verification (MFA path)
+            val user = FirebaseAuth.getInstance().currentUser
+            // forceRefresh=true ensures we get a fresh token with the latest custom claims,
+            // not a cached one that may predate an admin role assignment.
+            val roleFromClaims = user?.getIdToken(true)?.await()?.claims?.get("role") as? String
+            UserSession.populate(user?.displayName, user?.email ?: "", roleFromClaims)
             AuthSignInResult.Success
         } catch (e: FirebaseAuthException) {
             AuthSignInResult.Error(totpErrorMessage(e.errorCode))
@@ -102,11 +122,6 @@ actual object FirebaseAuthClient {
         }
     }
 
-    /**
-     * Generates a TOTP secret for the currently signed-in user.
-     * Stores the secret internally so [enrollTotp] can reference it.
-     * Returns the otpauth:// URI (for QR code) and the raw secret key (for manual entry).
-     */
     actual suspend fun generateTotpSetup(): TotpSetupResult {
         val user = FirebaseAuth.getInstance().currentUser
             ?: return TotpSetupResult.Error("Sesión no encontrada. Inicia sesión de nuevo.")
@@ -130,10 +145,6 @@ actual object FirebaseAuthClient {
         }
     }
 
-    /**
-     * Completes TOTP enrollment using the [otp] the user entered from Google Authenticator.
-     * Requires [generateTotpSetup] to have been called first in the same session.
-     */
     actual suspend fun enrollTotp(otp: String): AuthSignInResult {
         val secret = pendingTotpSecret
             ?: return AuthSignInResult.Error("Sesión expirada. Inicia sesión de nuevo.")
@@ -143,6 +154,7 @@ actual object FirebaseAuthClient {
             val assertion = TotpMultiFactorGenerator.getAssertionForEnrollment(secret, otp)
             user.multiFactor.enroll(assertion, "CrocAlert TOTP").await()
             pendingTotpSecret = null
+            // Session already populated during signIn (before MFA enrollment)
             AuthSignInResult.Success
         } catch (e: FirebaseAuthException) {
             AuthSignInResult.Error(totpErrorMessage(e.errorCode))

@@ -106,7 +106,8 @@ class AuthViewModel : ViewModel() {
         _registerError.value = null
         _isLoading.value = true
         viewModelScope.launch {
-            when (val result = FirebaseAuthClient.register(email, password)) {
+            val fullName = "$nombre $apellidos".trim()
+            when (val result = FirebaseAuthClient.register(email, password, fullName, rol)) {
                 is AuthSignInResult.Success -> _registerSuccess.value = true
                 is AuthSignInResult.Error -> _registerError.value = result.message
                 else -> Unit

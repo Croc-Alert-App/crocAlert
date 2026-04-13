@@ -7,7 +7,12 @@ actual object FirebaseAuthClient {
     actual suspend fun verifyTotp(otp: String): AuthSignInResult =
         AuthSignInResult.Error("Firebase Auth is not supported on desktop")
 
-    actual suspend fun register(email: String, password: String): AuthSignInResult =
+    actual suspend fun register(
+        email: String,
+        password: String,
+        fullName: String,
+        role: String,
+    ): AuthSignInResult =
         AuthSignInResult.Error("Firebase Auth is not supported on desktop")
 
     actual suspend fun sendVerificationEmail(): AuthSignInResult =
