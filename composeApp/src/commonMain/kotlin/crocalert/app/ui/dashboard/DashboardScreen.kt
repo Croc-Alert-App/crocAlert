@@ -9,31 +9,44 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.DateRange
+import androidx.compose.material.icons.outlined.WifiOff
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import crocalert.app.feature.alerts.ui.AlertListScreen
+import crocalert.app.feature.alerts.ui.components.AlertDateRangePickerDialog
+import crocalert.app.feature.alerts.presentation.DateRange
+import crocalert.app.shared.UserSession
 import crocalert.app.theme.CrocAmber
 import crocalert.app.theme.CrocBlue
-import crocalert.app.feature.alerts.ui.AlertListScreen
 import crocalert.app.ui.cameras.CamerasScreen
 import crocalert.app.ui.components.BottomNavBar
 import crocalert.app.ui.components.EmptyStateView
-import crocalert.app.ui.profile.ProfileScreen
 import crocalert.app.ui.components.StatCard
 import crocalert.app.ui.components.SyncBanner
+import crocalert.app.ui.profile.ProfileScreen
 
 @Composable
 fun DashboardScreen(
@@ -46,8 +59,23 @@ fun DashboardScreen(
     val uiState by viewModel.uiState.collectAsState()
     val lastSynced by viewModel.lastSynced.collectAsState()
 
+    val visibleTabs = if (UserSession.isAdmin) {
+        DashboardTab.entries
+    } else {
+        listOf(DashboardTab.Home, DashboardTab.Alerts, DashboardTab.Profile)
+    }
+
+    // If the currently selected tab is not visible for this role, reset to Home
+    val effectiveTab = if (selectedTab in visibleTabs) selectedTab else DashboardTab.Home
+
     Scaffold(
-        bottomBar = { BottomNavBar(selected = selectedTab, onSelect = viewModel::selectTab) }
+        bottomBar = {
+            BottomNavBar(
+                selected = effectiveTab,
+                onSelect = viewModel::selectTab,
+                visibleTabs = visibleTabs,
+            )
+        }
     ) { innerPadding ->
         Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
             SyncBanner(
@@ -58,8 +86,13 @@ fun DashboardScreen(
             when (val state = uiState) {
                 is DashboardUiState.Loading -> LoadingContent()
                 is DashboardUiState.Error -> ErrorContent(state.message, onRetry = viewModel::retry)
-                is DashboardUiState.Success -> when (selectedTab) {
-                    DashboardTab.Home -> DashboardContent(state.data, onAlertClick = onAlertClick)
+                is DashboardUiState.Success -> when (effectiveTab) {
+                    DashboardTab.Home -> DashboardContent(
+                        data = state.data,
+                        onAlertClick = onAlertClick,
+                        onAlertsSettingClick = { viewModel.selectTab(DashboardTab.Profile) },
+                        onTrendRangeSelected = { _, endMs -> viewModel.setTrendEndDate(endMs) },
+                    )
                     DashboardTab.Cameras -> CamerasScreen()
                     DashboardTab.Alerts -> AlertListScreen(onAlertClick = onAlertClick)
                     DashboardTab.Profile -> ProfileScreen(onLogout = onLogout)
@@ -69,7 +102,7 @@ fun DashboardScreen(
     }
 }
 
-// — State renderers ———————————————————————————————————————
+// ── State renderers ───────────────────────────────────────────────────────────
 
 @Composable
 private fun LoadingContent() {
@@ -81,46 +114,70 @@ private fun LoadingContent() {
 @Composable
 private fun ErrorContent(message: String, onRetry: () -> Unit) {
     Column(
-        modifier = Modifier.fillMaxSize().padding(horizontal = 32.dp),
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 40.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
+        Icon(
+            imageVector = Icons.Outlined.WifiOff,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+            modifier = Modifier.size(64.dp),
+        )
+        Spacer(modifier = Modifier.height(20.dp))
+        Text(
+            text = "Sin datos disponibles",
+            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+        Spacer(modifier = Modifier.height(8.dp))
         Text(
             text = message,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.error
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
         )
-        Spacer(modifier = Modifier.height(16.dp))
-        Button(onClick = onRetry) {
-            Text("Reintentar")
+        Spacer(modifier = Modifier.height(28.dp))
+        Button(
+            onClick = onRetry,
+            colors = ButtonDefaults.buttonColors(containerColor = CrocBlue),
+        ) {
+            Text("Reintentar", fontWeight = FontWeight.SemiBold)
         }
     }
 }
 
 @Composable
-private fun DashboardContent(data: DashboardData, onAlertClick: (String) -> Unit) {
+private fun DashboardContent(
+    data: DashboardData,
+    onAlertClick: (String) -> Unit,
+    onAlertsSettingClick: () -> Unit,
+    onTrendRangeSelected: (startMs: Long, endMs: Long) -> Unit,
+) {
     LazyColumn(modifier = Modifier.fillMaxSize()) {
-        item { HeaderSection(data) }
-        item { StatsGridSection(data) }
-        item { NetworkTrendSection(data) }
-        item { MetadataQualitySection(data) }
+        item { HeaderSection() }
+        item { StatsGridSection(data, onAlertsSettingClick = onAlertsSettingClick) }
+        item { NetworkTrendSection(data, onRangeSelected = onTrendRangeSelected) }
         item { RecentActivitySection(data, onAlertClick = onAlertClick) }
         item { Spacer(modifier = Modifier.height(16.dp)) }
     }
 }
 
-// — Sections ——————————————————————————————————————————————
+// ── Sections ─────────────────────────────────────────────────────────────────
 
 @Composable
-private fun HeaderSection(data: DashboardData) {
+private fun HeaderSection() {
     Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp)) {
         Text(
             text = "PANEL",
             style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.ExtraBold),
             color = CrocBlue
         )
+        val nameLabel = UserSession.fullName.ifBlank { UserSession.email.substringBefore("@") }
         Text(
-            text = "Trabajador del SINAC · Región de Tárcoles",
+            text = "$nameLabel · Reserva Conchal",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -128,7 +185,7 @@ private fun HeaderSection(data: DashboardData) {
 }
 
 @Composable
-private fun StatsGridSection(data: DashboardData) {
+private fun StatsGridSection(data: DashboardData, onAlertsSettingClick: () -> Unit) {
     Column(modifier = Modifier.padding(horizontal = 20.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             StatCard(
@@ -136,94 +193,82 @@ private fun StatsGridSection(data: DashboardData) {
                 badgeColor = CrocBlue,
                 label = "Cámaras activas",
                 value = "${(data.networkHealthPct * 100).toInt()}%",
-                subtitle = "Salud",
+                subtitle = "Salud de red",
                 modifier = Modifier.weight(1f)
             )
             StatCard(
                 badge = "${data.activeAlerts}",
                 badgeColor = CrocAmber,
                 label = "Alertas activas",
-                value = "${data.criticalAlerts}",
-                subtitle = "Crítico",
+                value = "${data.activeAlerts}",
+                subtitle = if (data.alertWindowDays == 1) "Hoy" else "Últimos ${data.alertWindowDays}d",
+                onClick = onAlertsSettingClick,
                 modifier = Modifier.weight(1f)
             )
         }
         Spacer(modifier = Modifier.height(12.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            StatCard(
-                badge = "${(data.captureRatePct * 100).toInt()}%",
-                badgeColor = CrocBlue,
-                label = "Tasa de captura",
-                value = data.captureRate,
-                modifier = Modifier.weight(1f)
-            )
-            StatCard(
-                badge = "OK",
-                badgeColor = CrocBlue,
-                label = "Integridad",
-                value = "${(data.integrityPct * 100).toInt()}%",
-                modifier = Modifier.weight(1f)
-            )
-        }
+        StatCard(
+            badge = "${(data.captureRatePct * 100).toInt()}%",
+            badgeColor = CrocBlue,
+            label = "Tasa de captura (hoy)",
+            value = data.captureRate,
+            subtitle = "imágenes recibidas / esperadas",
+            modifier = Modifier.fillMaxWidth()
+        )
         Spacer(modifier = Modifier.height(20.dp))
     }
 }
 
 @Composable
-private fun NetworkTrendSection(data: DashboardData) {
+private fun NetworkTrendSection(
+    data: DashboardData,
+    onRangeSelected: (startMs: Long, endMs: Long) -> Unit,
+) {
+    var showPicker by remember { mutableStateOf(false) }
+
+    if (showPicker) {
+        AlertDateRangePickerDialog(
+            onRangeSelected = { start, end ->
+                showPicker = false
+                onRangeSelected(start, end)
+            },
+            onDismiss = { showPicker = false },
+        )
+    }
+
     Card(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                text = "Tendencia de la red (7d)",
-                style = MaterialTheme.typography.titleMedium,
-                color = CrocBlue
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            NetworkBarChart(
-                data = data.networkTrend,
-                modifier = Modifier.fillMaxWidth().height(80.dp)
-            )
-            Spacer(modifier = Modifier.height(6.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                data.networkTrend.forEach { day ->
-                    Text(
-                        text = day.label,
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = if (day.isToday) FontWeight.Bold else FontWeight.Normal,
-                        color = if (day.isToday) CrocBlue else MaterialTheme.colorScheme.onSurfaceVariant
+                Text(
+                    text = "Tendencia de la red (7d)",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = CrocBlue,
+                    modifier = Modifier.weight(1f),
+                )
+                IconButton(
+                    onClick = { showPicker = true },
+                    modifier = Modifier.size(32.dp),
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.DateRange,
+                        contentDescription = "Seleccionar rango",
+                        tint = CrocBlue,
+                        modifier = Modifier.size(18.dp),
                     )
                 }
             }
-        }
-    }
-    Spacer(modifier = Modifier.height(20.dp))
-}
-
-@Composable
-private fun MetadataQualitySection(data: DashboardData) {
-    Card(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                text = "Índice de calidad de metadatos",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurface
+            Spacer(modifier = Modifier.height(8.dp))
+            NetworkBarChart(
+                data = data.networkTrend,
+                modifier = Modifier.fillMaxWidth().height(100.dp)
             )
-            Spacer(modifier = Modifier.height(14.dp))
-            data.metadataMetrics.forEachIndexed { index, metric ->
-                MetricProgressRow(metric = metric)
-                if (index < data.metadataMetrics.lastIndex) Spacer(modifier = Modifier.height(14.dp))
-            }
         }
     }
     Spacer(modifier = Modifier.height(20.dp))
