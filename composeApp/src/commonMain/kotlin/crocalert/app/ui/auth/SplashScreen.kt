@@ -13,6 +13,10 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -26,11 +30,21 @@ import crocalert.app.theme.CrocNeutralDark
 import crocalert.app.theme.CrocWhite
 import kotlinx.coroutines.delay
 
+enum class SessionCheckResult { Active, Expired, None }
+
 @Composable
-fun SplashScreen(onSessionChecked: (isLoggedIn: Boolean) -> Unit) {
+fun SplashScreen(onSessionChecked: (SessionCheckResult) -> Unit) {
+    var debugText by remember { mutableStateOf("...") }
+
     LaunchedEffect(Unit) {
+        debugText = SessionManager.debugInfo()
         delay(2_000L)
-        onSessionChecked(SessionManager.isDeviceRemembered)
+        val result = when {
+            SessionManager.isSessionValid()   -> SessionCheckResult.Active
+            SessionManager.isSessionExpired() -> SessionCheckResult.Expired
+            else                              -> SessionCheckResult.None
+        }
+        onSessionChecked(result)
     }
 
     Box(
@@ -76,6 +90,14 @@ fun SplashScreen(onSessionChecked: (isLoggedIn: Boolean) -> Unit) {
                 text = "Comprobando sesión...",
                 fontSize = 14.sp,
                 color = CrocBlueVibrant,
+            )
+            Spacer(Modifier.height(8.dp))
+            // DEBUG — remove before release
+            Text(
+                text = debugText,
+                fontSize = 10.sp,
+                color = CrocNeutralDark,
+                textAlign = TextAlign.Center,
             )
         }
         Text(

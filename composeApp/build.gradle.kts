@@ -42,6 +42,7 @@ kotlin {
             implementation(libs.koinAndroidxCompose)
             implementation(libs.firebaseAuthKtx)
             implementation(libs.kotlinxCoroutinesPlayServices)
+            implementation(libs.datastorePrefs)
         }
 
         commonMain.dependencies {

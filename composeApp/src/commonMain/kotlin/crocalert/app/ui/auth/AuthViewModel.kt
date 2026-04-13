@@ -33,6 +33,11 @@ class AuthViewModel : ViewModel() {
     private val _enrollError = MutableStateFlow<String?>(null)
     val enrollError: StateFlow<String?> = _enrollError
 
+    // Held across the MFA step so verifyTotp/enrollTotp can start the session timer
+    // only after authentication is fully complete.
+    private var pendingEmail: String = ""
+    private var pendingRememberDevice: Boolean = false
+
     /**
      * Signs in with email/password.
      * - MFA already enrolled → [onMfaRequired] (verify existing TOTP)
@@ -52,15 +57,20 @@ class AuthViewModel : ViewModel() {
         viewModelScope.launch {
             when (val result = FirebaseAuthClient.signIn(email, password)) {
                 is AuthSignInResult.MfaRequired -> {
-                    if (rememberDevice) SessionManager.rememberDevice()
+                    // Auth not yet complete — store pending state for after TOTP verification.
+                    pendingEmail = email
+                    pendingRememberDevice = rememberDevice
                     onMfaRequired()
                 }
                 is AuthSignInResult.MfaEnrollmentRequired -> {
-                    if (rememberDevice) SessionManager.rememberDevice()
+                    // Auth not yet complete — store pending state for after TOTP enrollment.
+                    pendingEmail = email
+                    pendingRememberDevice = rememberDevice
                     onMfaEnrollmentRequired()
                 }
                 is AuthSignInResult.Success -> {
-                    if (rememberDevice) SessionManager.rememberDevice()
+                    // No MFA — auth is complete, start the session timer now.
+                    SessionManager.updateRememberDevice(email, rememberDevice)
                     onSuccess()
                 }
                 is AuthSignInResult.EmailNotVerified -> {
@@ -85,7 +95,10 @@ class AuthViewModel : ViewModel() {
         _isLoading.value = true
         viewModelScope.launch {
             when (val result = FirebaseAuthClient.verifyTotp(otp)) {
-                is AuthSignInResult.Success -> onSuccess()
+                is AuthSignInResult.Success -> {
+                    SessionManager.updateRememberDevice(pendingEmail, pendingRememberDevice)
+                    onSuccess()
+                }
                 is AuthSignInResult.Error -> _mfaError.value = result.message
                 else -> Unit
             }
@@ -140,7 +153,10 @@ class AuthViewModel : ViewModel() {
         _isLoading.value = true
         viewModelScope.launch {
             when (val result = FirebaseAuthClient.enrollTotp(otp)) {
-                is AuthSignInResult.Success -> onSuccess()
+                is AuthSignInResult.Success -> {
+                    SessionManager.updateRememberDevice(pendingEmail, pendingRememberDevice)
+                    onSuccess()
+                }
                 is AuthSignInResult.Error -> _enrollError.value = result.message
                 else -> Unit
             }
