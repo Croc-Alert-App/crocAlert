@@ -2,7 +2,9 @@ package crocalert.app.domain.repository
 
 import crocalert.app.model.Camera
 import crocalert.app.shared.data.dto.CameraDailyStatsDto
+import crocalert.app.shared.data.dto.CameraMonitoringDashboardDto
 import crocalert.app.shared.data.dto.CaptureDto
+import crocalert.app.shared.data.dto.GlobalDailyCaptureRateDto
 import crocalert.app.shared.network.ApiResult
 import kotlinx.coroutines.flow.Flow
 
@@ -12,6 +14,8 @@ interface CameraRepository {
     suspend fun getCapturesByCamera(cameraId: String): ApiResult<List<CaptureDto>>
     suspend fun getDailyStats(cameraId: String, date: String): ApiResult<CameraDailyStatsDto>
     suspend fun getDailyStatsForAll(date: String): ApiResult<List<CameraDailyStatsDto>>
+    suspend fun getMonitoringDashboard(date: String): ApiResult<CameraMonitoringDashboardDto>
+    suspend fun getGlobalCaptureRate(date: String): ApiResult<GlobalDailyCaptureRateDto>
     suspend fun createCamera(camera: Camera): String
     suspend fun updateCamera(camera: Camera)
     suspend fun deleteCamera(cameraId: String)

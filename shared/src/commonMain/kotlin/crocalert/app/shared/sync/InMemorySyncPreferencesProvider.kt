@@ -17,4 +17,8 @@ class InMemorySyncPreferencesProvider : SyncPreferencesProvider {
     override suspend fun setCamerasTtl(minutes: Int) {
         _preferences.update { it.copy(camerasTtlMinutes = minutes) }
     }
+
+    override suspend fun setAlertWindowDays(days: Int) {
+        _preferences.update { it.copy(alertWindowDays = days) }
+    }
 }
