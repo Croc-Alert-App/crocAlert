@@ -16,7 +16,7 @@ sealed class TotpSetupResult {
 expect object FirebaseAuthClient {
     suspend fun signIn(email: String, password: String): AuthSignInResult
     suspend fun verifyTotp(otp: String): AuthSignInResult
-    suspend fun register(email: String, password: String): AuthSignInResult
+    suspend fun register(email: String, password: String, fullName: String, role: String): AuthSignInResult
     suspend fun sendVerificationEmail(): AuthSignInResult
     suspend fun generateTotpSetup(): TotpSetupResult
     suspend fun enrollTotp(otp: String): AuthSignInResult
