@@ -23,4 +23,9 @@ actual object FirebaseAuthClient {
 
     actual suspend fun enrollTotp(otp: String): AuthSignInResult =
         AuthSignInResult.Error("Firebase Auth is not supported on desktop")
+
+    actual suspend fun sendPasswordReset(email: String): AuthSignInResult =
+        AuthSignInResult.Error("Firebase Auth is not supported on desktop")
+
+    actual suspend fun restoreSession(): Boolean = false
 }

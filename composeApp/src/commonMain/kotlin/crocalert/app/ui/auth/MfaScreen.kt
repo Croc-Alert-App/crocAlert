@@ -11,9 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -23,7 +21,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -37,6 +34,7 @@ import crocalert.app.theme.CrocWhite
 import crocalert.app.ui.auth.components.CrocAlertPrimaryButton
 import crocalert.app.ui.auth.components.OtpInputField
 import kotlinx.coroutines.delay
+import androidx.compose.ui.Modifier
 
 private val MfaBannerColor = Color(0xFFD6E8FF)
 
@@ -52,8 +50,10 @@ fun MfaScreen(
 ) {
     var otp by remember { mutableStateOf("") }
     var countdownSeconds by remember { mutableStateOf(42) }
+    var resendKey by remember { mutableStateOf(0) }
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(resendKey) {
+        countdownSeconds = 42
         while (countdownSeconds > 0) {
             delay(1_000L)
             countdownSeconds--
@@ -64,21 +64,30 @@ fun MfaScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(CrocWhite),
+        contentAlignment = Alignment.Center,
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .verticalScroll(rememberScrollState())
                 .padding(horizontal = 24.dp)
-                .padding(top = 40.dp, bottom = 100.dp),
+                .padding(vertical = 32.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            // Logo placeholder
+            // App logo — replace with actual asset when available
             Box(
                 modifier = Modifier
                     .size(64.dp)
-                    .background(Color.LightGray, RoundedCornerShape(8.dp)),
-            )
+                    .background(CrocBlue, RoundedCornerShape(12.dp)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = "CA",
+                    color = Color.White,
+                    fontWeight = FontWeight.ExtraBold,
+                    fontSize = 20.sp,
+                    letterSpacing = 1.sp,
+                )
+            }
             Spacer(Modifier.height(24.dp))
             Text(
                 text = "VERIFICAR IDENTIDAD",
@@ -106,20 +115,24 @@ fun MfaScreen(
                 Text(
                     text = error,
                     fontSize = 13.sp,
-                    color = androidx.compose.ui.graphics.Color.Red,
+                    color = Color.Red,
                     textAlign = TextAlign.Center,
                 )
             }
             Spacer(Modifier.height(32.dp))
             CrocAlertPrimaryButton(
-                text = if (isLoading) "Verificando..." else "Verify Code",
+                text = if (isLoading) "Verificando..." else "Verificar código",
                 onClick = { onVerify(otp) },
                 enabled = otp.length == 6 && !isLoading,
             )
             Spacer(Modifier.height(20.dp))
             ResendRow(
                 countdownSeconds = countdownSeconds,
-                onResend = onResend,
+                onResend = {
+                    otp = ""
+                    resendKey++
+                    onResend()
+                },
             )
             Spacer(Modifier.height(8.dp))
             Text(
@@ -128,25 +141,22 @@ fun MfaScreen(
                 color = CrocNeutralDark,
                 modifier = Modifier.clickable { onUseBackupCode() },
             )
-        }
-
-        // MFA required banner — always pinned to bottom
-        Surface(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-                .padding(16.dp),
-            color = MfaBannerColor,
-            shape = RoundedCornerShape(12.dp),
-        ) {
-            Text(
-                text = "Se requiere MFA para todo acceso al campo.",
-                modifier = Modifier.padding(16.dp),
-                textAlign = TextAlign.Center,
-                fontSize = 13.sp,
-                color = CrocBlue,
-                fontWeight = FontWeight.Medium,
-            )
+            Spacer(Modifier.height(24.dp))
+            // MFA required notice — inline, directly below the action links
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                color = MfaBannerColor,
+                shape = RoundedCornerShape(12.dp),
+            ) {
+                Text(
+                    text = "Se requiere MFA para todo acceso al campo.",
+                    modifier = Modifier.padding(16.dp),
+                    textAlign = TextAlign.Center,
+                    fontSize = 13.sp,
+                    color = CrocBlue,
+                    fontWeight = FontWeight.Medium,
+                )
+            }
         }
     }
 }

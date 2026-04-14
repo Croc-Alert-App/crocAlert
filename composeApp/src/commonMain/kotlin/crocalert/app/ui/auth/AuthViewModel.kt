@@ -33,6 +33,15 @@ class AuthViewModel : ViewModel() {
     private val _enrollError = MutableStateFlow<String?>(null)
     val enrollError: StateFlow<String?> = _enrollError
 
+    private val _passwordResetSent = MutableStateFlow(false)
+    val passwordResetSent: StateFlow<Boolean> = _passwordResetSent
+
+    private val _passwordResetError = MutableStateFlow<String?>(null)
+    val passwordResetError: StateFlow<String?> = _passwordResetError
+
+    private val _isPasswordResetLoading = MutableStateFlow(false)
+    val isPasswordResetLoading: StateFlow<Boolean> = _isPasswordResetLoading
+
     // Held across the MFA step so verifyTotp/enrollTotp can start the session timer
     // only after authentication is fully complete.
     private var pendingEmail: String = ""
@@ -74,12 +83,15 @@ class AuthViewModel : ViewModel() {
                     onSuccess()
                 }
                 is AuthSignInResult.EmailNotVerified -> {
-                    // Send a fresh verification email every time the user tries to log in
-                    // while unverified. currentUser is still active at this point.
-                    FirebaseAuthClient.sendVerificationEmail()
-                    _loginError.value =
+                    // Await the verification email send and surface any failure to the user
+                    // so they know if the email was not actually sent.
+                    val emailResult = FirebaseAuthClient.sendVerificationEmail()
+                    _loginError.value = if (emailResult is AuthSignInResult.Error) {
+                        emailResult.message
+                    } else {
                         "Revisa tu correo electrónico y haz clic en el enlace de verificación " +
                         "para activar tu cuenta. Si no lo encuentras, revisa tu carpeta de spam."
+                    }
                 }
                 is AuthSignInResult.Error -> _loginError.value = result.message
             }
@@ -91,6 +103,10 @@ class AuthViewModel : ViewModel() {
      * Resolves TOTP MFA with the given [otp] (sign-in verification, not enrollment).
      */
     fun verifyTotp(otp: String, onSuccess: () -> Unit) {
+        if (pendingEmail.isEmpty()) {
+            _mfaError.value = "Sesión inválida. Por favor, inicia sesión de nuevo."
+            return
+        }
         _mfaError.value = null
         _isLoading.value = true
         viewModelScope.launch {
@@ -164,10 +180,31 @@ class AuthViewModel : ViewModel() {
         }
     }
 
+    /**
+     * Sends a password reset email to [email].
+     * Only transitions to sent state on confirmed success — callers are informed of failures.
+     */
+    fun sendPasswordReset(email: String) {
+        _passwordResetError.value = null
+        _isPasswordResetLoading.value = true
+        viewModelScope.launch {
+            when (val result = FirebaseAuthClient.sendPasswordReset(email)) {
+                is AuthSignInResult.Success -> _passwordResetSent.value = true
+                is AuthSignInResult.Error   -> _passwordResetError.value = result.message
+                else -> Unit
+            }
+            _isPasswordResetLoading.value = false
+        }
+    }
+
     fun clearLoginError() { _loginError.value = null }
     fun clearMfaError() { _mfaError.value = null }
     fun clearRegisterError() { _registerError.value = null }
     fun clearRegisterSuccess() { _registerSuccess.value = false }
     fun clearEnrollError() { _enrollError.value = null }
     fun clearTotpSetup() { _totpSetup.value = null }
+    fun clearPasswordResetState() {
+        _passwordResetSent.value = false
+        _passwordResetError.value = null
+    }
 }

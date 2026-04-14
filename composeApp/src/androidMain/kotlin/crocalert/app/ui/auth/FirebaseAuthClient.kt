@@ -18,26 +18,28 @@ actual object FirebaseAuthClient {
 
     actual suspend fun signIn(email: String, password: String): AuthSignInResult {
         return try {
-            FirebaseAuth.getInstance().signInWithEmailAndPassword(email, password).await()
-            val user = FirebaseAuth.getInstance().currentUser
+            // Use the AuthResult directly to avoid a TOCTOU race between the sign-in
+            // and a subsequent currentUser read (Firebase could revoke the token in between).
+            val result = FirebaseAuth.getInstance().signInWithEmailAndPassword(email, password).await()
+            val user = result.user
 
             if (user?.isEmailVerified == false) {
                 return AuthSignInResult.EmailNotVerified
             }
 
             // Read the `role` custom claim from the ID token (set via Firebase Admin SDK/console).
-            // This is the authoritative role source for accounts that predate displayName encoding.
-            // forceRefresh=true ensures we get a fresh token with the latest custom claims,
-            // not a cached one that may predate an admin role assignment.
+            // forceRefresh=true ensures we get a fresh token with the latest custom claims.
             val roleFromClaims = user?.getIdToken(true)?.await()?.claims?.get("role") as? String
 
             val enrolled = user?.multiFactor?.enrolledFactors
             if (enrolled.isNullOrEmpty()) {
-                UserSession.populate(user?.displayName, user?.email ?: email, roleFromClaims)
+                // MFA enrollment required — UserSession is NOT populated here.
+                // It will be populated in enrollTotp() after the user completes setup.
                 AuthSignInResult.MfaEnrollmentRequired
             } else {
-                UserSession.populate(user?.displayName, user?.email ?: email, roleFromClaims)
-                AuthSignInResult.Success
+                // MFA already enrolled — user will complete TOTP verification next.
+                // UserSession is NOT populated here; it is populated in verifyTotp() on success.
+                AuthSignInResult.MfaRequired
             }
         } catch (e: FirebaseAuthMultiFactorException) {
             pendingResolver = e.resolver
@@ -108,14 +110,17 @@ actual object FirebaseAuthClient {
             val assertion = TotpMultiFactorGenerator.getAssertionForSignIn(hint.uid, otp)
             resolver.resolveSignIn(assertion).await()
             pendingResolver = null
-            // Populate session after TOTP verification (MFA path)
+            // Populate session after full TOTP verification
             val user = FirebaseAuth.getInstance().currentUser
-            // forceRefresh=true ensures we get a fresh token with the latest custom claims,
-            // not a cached one that may predate an admin role assignment.
             val roleFromClaims = user?.getIdToken(true)?.await()?.claims?.get("role") as? String
             UserSession.populate(user?.displayName, user?.email ?: "", roleFromClaims)
             AuthSignInResult.Success
         } catch (e: FirebaseAuthException) {
+            // Clear the stale resolver when the session has expired so callers cannot
+            // retry against an expired resolver and get a confusing failure.
+            if (e.errorCode == "ERROR_SESSION_EXPIRED") {
+                pendingResolver = null
+            }
             AuthSignInResult.Error(totpErrorMessage(e.errorCode))
         } catch (e: Exception) {
             AuthSignInResult.Error("Verificación fallida. Intenta de nuevo.")
@@ -145,6 +150,14 @@ actual object FirebaseAuthClient {
         }
     }
 
+    actual suspend fun restoreSession(): Boolean {
+        val user = FirebaseAuth.getInstance().currentUser ?: return false
+        // Use cached token (forceRefresh=false) — avoids a network round-trip on startup.
+        val roleFromClaims = user.getIdToken(false).await()?.claims?.get("role") as? String
+        UserSession.populate(user.displayName, user.email ?: "", roleFromClaims)
+        return true
+    }
+
     actual suspend fun enrollTotp(otp: String): AuthSignInResult {
         val secret = pendingTotpSecret
             ?: return AuthSignInResult.Error("Sesión expirada. Inicia sesión de nuevo.")
@@ -154,12 +167,40 @@ actual object FirebaseAuthClient {
             val assertion = TotpMultiFactorGenerator.getAssertionForEnrollment(secret, otp)
             user.multiFactor.enroll(assertion, "CrocAlert TOTP").await()
             pendingTotpSecret = null
-            // Session already populated during signIn (before MFA enrollment)
+            // Populate session here, after MFA enrollment is fully confirmed.
+            // forceRefresh=true ensures we get a fresh token with the latest custom claims.
+            val roleFromClaims = user.getIdToken(true).await()?.claims?.get("role") as? String
+            UserSession.populate(user.displayName, user.email ?: "", roleFromClaims)
             AuthSignInResult.Success
         } catch (e: FirebaseAuthException) {
+            // Clear the stale secret on non-retryable errors so the user must restart
+            // the enrollment flow rather than silently retrying with an expired secret.
+            if (e.errorCode == "ERROR_SESSION_EXPIRED" || e.errorCode == "ERROR_REQUIRES_RECENT_LOGIN") {
+                pendingTotpSecret = null
+            }
             AuthSignInResult.Error(totpErrorMessage(e.errorCode))
         } catch (e: Exception) {
             AuthSignInResult.Error("Error al activar MFA. Intenta de nuevo.")
+        }
+    }
+
+    actual suspend fun sendPasswordReset(email: String): AuthSignInResult {
+        return try {
+            FirebaseAuth.getInstance().sendPasswordResetEmail(email).await()
+            AuthSignInResult.Success
+        } catch (e: FirebaseAuthException) {
+            when (e.errorCode) {
+                // Suppress USER_NOT_FOUND to avoid revealing whether the address is registered.
+                "ERROR_USER_NOT_FOUND" -> AuthSignInResult.Success
+                "ERROR_TOO_MANY_REQUESTS" ->
+                    AuthSignInResult.Error("Ya enviamos un correo recientemente. Espera unos minutos.")
+                "ERROR_NETWORK_REQUEST_FAILED" ->
+                    AuthSignInResult.Error("Sin conexión a internet. Verifica tu red.")
+                else ->
+                    AuthSignInResult.Error("No se pudo enviar el correo. Intenta de nuevo.")
+            }
+        } catch (e: Exception) {
+            AuthSignInResult.Error("No se pudo enviar el correo. Intenta de nuevo.")
         }
     }
 

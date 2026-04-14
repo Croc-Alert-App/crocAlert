@@ -13,6 +13,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -29,9 +30,14 @@ import crocalert.app.ui.auth.components.CrocAlertTextField
 private val EMAIL_REGEX = Regex("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}\$")
 
 @Composable
-fun ForgotPasswordScreen(onBack: () -> Unit) {
+fun ForgotPasswordScreen(
+    isSending: Boolean = false,
+    emailSent: Boolean = false,
+    sendError: String? = null,
+    onSend: (email: String) -> Unit,
+    onBack: () -> Unit,
+) {
     var email by remember { mutableStateOf("") }
-    var emailSent by remember { mutableStateOf(false) }
 
     val emailError = if (email.isNotEmpty() && !email.matches(EMAIL_REGEX))
         "Correo electrónico inválido" else null
@@ -45,8 +51,10 @@ fun ForgotPasswordScreen(onBack: () -> Unit) {
             RequestContent(
                 email = email,
                 emailError = emailError,
+                sendError = sendError,
+                isSending = isSending,
                 onEmailChange = { email = it },
-                onSend = { emailSent = true }, // TODO: call backend email service
+                onSend = { onSend(email) },
                 onBack = onBack,
             )
         }
@@ -59,6 +67,8 @@ fun ForgotPasswordScreen(onBack: () -> Unit) {
 private fun RequestContent(
     email: String,
     emailError: String?,
+    sendError: String?,
+    isSending: Boolean,
     onEmailChange: (String) -> Unit,
     onSend: () -> Unit,
     onBack: () -> Unit,
@@ -89,11 +99,20 @@ private fun RequestContent(
         isError = emailError != null,
         errorMessage = emailError,
     )
+    if (sendError != null) {
+        Spacer(Modifier.height(8.dp))
+        Text(
+            text = sendError,
+            fontSize = 13.sp,
+            color = Color.Red,
+            textAlign = TextAlign.Center,
+        )
+    }
     Spacer(Modifier.height(24.dp))
     CrocAlertPrimaryButton(
-        text = "Enviar instrucciones",
+        text = if (isSending) "Enviando..." else "Enviar instrucciones",
         onClick = onSend,
-        enabled = email.matches(EMAIL_REGEX),
+        enabled = email.matches(EMAIL_REGEX) && !isSending,
     )
     Spacer(Modifier.height(12.dp))
     CrocAlertSecondaryButton(

@@ -20,4 +20,19 @@ expect object FirebaseAuthClient {
     suspend fun sendVerificationEmail(): AuthSignInResult
     suspend fun generateTotpSetup(): TotpSetupResult
     suspend fun enrollTotp(otp: String): AuthSignInResult
+
+    /**
+     * Sends a password reset email to [email].
+     * Succeeds silently even if no account exists (privacy — callers should not
+     * reveal whether the address is registered).
+     */
+    suspend fun sendPasswordReset(email: String): AuthSignInResult
+
+    /**
+     * Reads the currently signed-in Firebase user and populates [UserSession].
+     * Called on app startup when a remembered session is detected, so the user
+     * data is available without going through the login flow again.
+     * Returns true if a Firebase user was found and the session was restored.
+     */
+    suspend fun restoreSession(): Boolean
 }
