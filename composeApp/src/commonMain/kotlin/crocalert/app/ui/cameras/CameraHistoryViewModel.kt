@@ -11,6 +11,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.Clock
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.TimeZone
@@ -32,6 +34,7 @@ class CameraHistoryViewModel(
     private val tz get() = TimeZone.currentSystemDefault()
     private val today get() = Clock.System.todayIn(tz)
     private var currentCamera: Camera? = null
+    private val loadMutex = Mutex()
 
     private val _uiState = MutableStateFlow(
         CameraHistoryUiState(
@@ -114,7 +117,7 @@ class CameraHistoryViewModel(
         }
     }
 
-    private suspend fun loadCaptures() {
+    private suspend fun loadCaptures() = loadMutex.withLock {
         val state = _uiState.value
         val date = state.selectedDate
         val dateString = date.toString()           // "YYYY-MM-DD" — matches server route param
@@ -141,7 +144,7 @@ class CameraHistoryViewModel(
                 isLoading = false,
                 error = "Error al cargar historial",
             )
-            return
+            return@withLock
         }
 
         // Build the slot grid from individual captures (capture-level detail)

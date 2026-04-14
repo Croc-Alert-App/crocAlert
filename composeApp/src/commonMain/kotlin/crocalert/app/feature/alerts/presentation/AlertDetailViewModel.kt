@@ -59,12 +59,16 @@ class AlertDetailViewModel(
                 } ?: throw IllegalArgumentException("Alerta $alertId no encontrada")
 
                 val camera: Camera? = if (alert.cameraId.isNotBlank()) {
-                    cameraRepository.observeCamera(alert.cameraId).first()
+                    withTimeoutOrNull(5_000L) {
+                        cameraRepository.observeCamera(alert.cameraId).first()
+                    }
                 } else null
 
                 val siteId = camera?.siteId
                 val site: Site? = if (siteId != null) {
-                    siteRepository.observeSite(siteId).first()
+                    withTimeoutOrNull(5_000L) {
+                        siteRepository.observeSite(siteId).first()
+                    }
                 } else null
 
                 val capture: CaptureDto? = if (alert.cameraId.isNotBlank() && alert.captureId.isNotBlank()) {
