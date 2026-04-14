@@ -22,6 +22,7 @@ import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.atStartOfDayIn
 import kotlinx.datetime.minus
+import kotlinx.datetime.plus
 import kotlinx.datetime.toLocalDateTime
 import kotlinx.datetime.todayIn
 
@@ -43,9 +44,9 @@ class DashboardViewModel(
     private val _selectedTab = MutableStateFlow(DashboardTab.Home)
     val selectedTab: StateFlow<DashboardTab> = _selectedTab.asStateFlow()
 
-    // Trend range: end date (inclusive). Defaults to today; the chart always shows 7 days back.
-    private val _trendEndMs = MutableStateFlow<Long?>(null)
-    val trendEndMs: StateFlow<Long?> = _trendEndMs.asStateFlow()
+    // Trend range — null means "default 7 days ending today".
+    private val _trendStartMs = MutableStateFlow<Long?>(null)
+    private val _trendEndMs   = MutableStateFlow<Long?>(null)
 
     private var loadJob: Job? = null
 
@@ -57,10 +58,18 @@ class DashboardViewModel(
         _selectedTab.value = tab
     }
 
-    fun setTrendEndDate(endMs: Long) {
+    fun setTrendRange(startMs: Long, endMs: Long) {
+        _trendStartMs.value = startMs
         _trendEndMs.value = endMs
         _uiState.value = DashboardUiState.Loading
         loadData()
+    }
+
+    fun setAlertWindowDays(days: Int) {
+        viewModelScope.launch {
+            syncPrefsProvider.setAlertWindowDays(days)
+            loadData()
+        }
     }
 
     fun retry() {
@@ -79,20 +88,26 @@ class DashboardViewModel(
             val tz = TimeZone.currentSystemDefault()
             val today = Clock.System.todayIn(tz)
 
-            // Resolve trend end date (today if no custom selection)
-            val trendEndDate: LocalDate = _trendEndMs.value
-                ?.let {
-                    Clock.System.now()
-                        .also { _ -> }
-                    // Convert millis to LocalDate
-                    val instant = kotlinx.datetime.Instant.fromEpochMilliseconds(it)
-                    instant.toLocalDateTime(tz).date
-                } ?: today
-
-            // ── Fetch dashboard for today (KPIs) and for 7-day trend in parallel ──
+            // ── Resolve trend date range ──────────────────────────────────────
             val todayStr = today.toString()
-            val trendDates = (6 downTo 0).map { offset ->
-                trendEndDate.minus(offset, DateTimeUnit.DAY)
+            val trendDates: List<LocalDate> = run {
+                val startMs = _trendStartMs.value
+                val endMs   = _trendEndMs.value
+                if (startMs != null && endMs != null) {
+                    val startDate = kotlinx.datetime.Instant.fromEpochMilliseconds(startMs)
+                        .toLocalDateTime(tz).date
+                    val endDate = kotlinx.datetime.Instant.fromEpochMilliseconds(endMs)
+                        .toLocalDateTime(tz).date
+                    val days = mutableListOf<LocalDate>()
+                    var current = startDate
+                    while (current <= endDate && days.size < 31) {
+                        days.add(current)
+                        current = current.plus(1, DateTimeUnit.DAY)
+                    }
+                    days
+                } else {
+                    (6 downTo 0).map { offset -> today.minus(offset, DateTimeUnit.DAY) }
+                }
             }
 
             val todayDashboardDeferred = async {
@@ -128,13 +143,14 @@ class DashboardViewModel(
                 }
             }
 
-            // ── Build 7-day trend ──
+            // ── Build trend ───────────────────────────────────────────────────
+            val useDateNumbers = trendDates.size > 7
             val networkTrend = trendDates.mapIndexed { index, date ->
                 val healthRate = when (val res = trendResults[index]) {
                     is ApiResult.Success -> res.data.healthyRate.toFloat()
                     is ApiResult.Error -> 0f
                 }
-                val dayLabel = dayAbbreviation(date.dayOfWeek)
+                val dayLabel = if (useDateNumbers) "${date.dayOfMonth}" else dayAbbreviation(date.dayOfWeek)
                 NetworkTrendDay(
                     label = dayLabel,
                     value = healthRate,

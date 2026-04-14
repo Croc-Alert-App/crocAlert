@@ -22,6 +22,8 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -32,18 +34,17 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import crocalert.app.feature.alerts.ui.AlertListScreen
 import crocalert.app.feature.alerts.ui.components.AlertDateRangePickerDialog
-import crocalert.app.feature.alerts.presentation.DateRange
 import crocalert.app.shared.UserSession
 import crocalert.app.theme.CrocAmber
 import crocalert.app.theme.CrocBlue
 import crocalert.app.ui.cameras.CamerasScreen
 import crocalert.app.ui.components.BottomNavBar
-import crocalert.app.ui.components.EmptyStateView
 import crocalert.app.ui.components.StatCard
 import crocalert.app.ui.components.SyncBanner
 import crocalert.app.ui.profile.ProfileScreen
@@ -90,8 +91,8 @@ fun DashboardScreen(
                     DashboardTab.Home -> DashboardContent(
                         data = state.data,
                         onAlertClick = onAlertClick,
-                        onAlertsSettingClick = { viewModel.selectTab(DashboardTab.Profile) },
-                        onTrendRangeSelected = { _, endMs -> viewModel.setTrendEndDate(endMs) },
+                        onAlertWindowSelected = { days -> viewModel.setAlertWindowDays(days) },
+                        onTrendRangeSelected = { startMs, endMs -> viewModel.setTrendRange(startMs, endMs) },
                     )
                     DashboardTab.Cameras -> CamerasScreen()
                     DashboardTab.Alerts -> AlertListScreen(onAlertClick = onAlertClick)
@@ -149,16 +150,18 @@ private fun ErrorContent(message: String, onRetry: () -> Unit) {
     }
 }
 
+private val ALERT_WINDOW_OPTIONS = listOf(1 to "Hoy", 7 to "7 días", 30 to "30 días")
+
 @Composable
 private fun DashboardContent(
     data: DashboardData,
     onAlertClick: (String) -> Unit,
-    onAlertsSettingClick: () -> Unit,
+    onAlertWindowSelected: (days: Int) -> Unit,
     onTrendRangeSelected: (startMs: Long, endMs: Long) -> Unit,
 ) {
     LazyColumn(modifier = Modifier.fillMaxSize()) {
-        item { HeaderSection() }
-        item { StatsGridSection(data, onAlertsSettingClick = onAlertsSettingClick) }
+        item { HeaderSection(data, onAlertWindowSelected = onAlertWindowSelected) }
+        item { StatsGridSection(data) }
         item { NetworkTrendSection(data, onRangeSelected = onTrendRangeSelected) }
         item { RecentActivitySection(data, onAlertClick = onAlertClick) }
         item { Spacer(modifier = Modifier.height(16.dp)) }
@@ -168,7 +171,7 @@ private fun DashboardContent(
 // ── Sections ─────────────────────────────────────────────────────────────────
 
 @Composable
-private fun HeaderSection() {
+private fun HeaderSection(data: DashboardData, onAlertWindowSelected: (days: Int) -> Unit) {
     Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp)) {
         Text(
             text = "PANEL",
@@ -181,11 +184,27 @@ private fun HeaderSection() {
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
+        if (UserSession.isAdmin) {
+            Spacer(modifier = Modifier.height(12.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                ALERT_WINDOW_OPTIONS.forEach { (days, label) ->
+                    FilterChip(
+                        selected = data.alertWindowDays == days,
+                        onClick = { onAlertWindowSelected(days) },
+                        label = { Text(label, style = MaterialTheme.typography.labelSmall) },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = CrocBlue,
+                            selectedLabelColor = Color.White,
+                        ),
+                    )
+                }
+            }
+        }
     }
 }
 
 @Composable
-private fun StatsGridSection(data: DashboardData, onAlertsSettingClick: () -> Unit) {
+private fun StatsGridSection(data: DashboardData) {
     Column(modifier = Modifier.padding(horizontal = 20.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             StatCard(
@@ -202,7 +221,6 @@ private fun StatsGridSection(data: DashboardData, onAlertsSettingClick: () -> Un
                 label = "Alertas activas",
                 value = "${data.activeAlerts}",
                 subtitle = if (data.alertWindowDays == 1) "Hoy" else "Últimos ${data.alertWindowDays}d",
-                onClick = onAlertsSettingClick,
                 modifier = Modifier.weight(1f)
             )
         }
@@ -247,7 +265,7 @@ private fun NetworkTrendSection(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    text = "Tendencia de la red (7d)",
+                    text = "Tendencia de la red (${data.networkTrend.size}d)",
                     style = MaterialTheme.typography.titleMedium,
                     color = CrocBlue,
                     modifier = Modifier.weight(1f),

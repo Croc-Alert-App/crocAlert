@@ -22,8 +22,6 @@ import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -46,8 +44,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import crocalert.app.shared.UserSession
 import crocalert.app.theme.CrocBlue
 import crocalert.app.theme.CrocBlueLight
-
-private val ALERT_WINDOW_OPTIONS = listOf(1 to "Hoy", 7 to "7 días", 30 to "30 días")
 
 @Composable
 fun ProfileScreen(
@@ -126,35 +122,6 @@ fun ProfileScreen(
         }
 
         if (isAdmin) {
-            Spacer(Modifier.height(28.dp))
-
-            // ── Alert window section (admin only) ──────────────────────────────
-            Text(
-                text = "Ventana de alertas",
-                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-            Spacer(Modifier.height(4.dp))
-            Text(
-                text = "Rango de tiempo para contar alertas activas en el panel.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Spacer(Modifier.height(12.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                ALERT_WINDOW_OPTIONS.forEach { (days, label) ->
-                    FilterChip(
-                        selected = prefs.alertWindowDays == days,
-                        onClick = { viewModel.setAlertWindowDays(days) },
-                        label = { Text(label) },
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = CrocBlue,
-                            selectedLabelColor = Color.White,
-                        ),
-                    )
-                }
-            }
-
             Spacer(Modifier.height(28.dp))
 
             // ── Sync settings section (admin only) ────────────────────────────

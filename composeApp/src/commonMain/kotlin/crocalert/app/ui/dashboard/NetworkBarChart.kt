@@ -36,7 +36,8 @@ fun NetworkBarChart(
         if (barCount == 0) return@Canvas
 
         val labelHeightPx = 16.dp.toPx()
-        val chartHeight = size.height - labelHeightPx - 4.dp.toPx()
+        val topPaddingPx = 6.dp.toPx()
+        val chartHeight = size.height - labelHeightPx - 4.dp.toPx() - topPaddingPx
         val barWidth = size.width / (barCount * 2f)
         val gap = barWidth
 
@@ -48,7 +49,7 @@ fun NetworkBarChart(
             // Draw bar
             drawRoundRect(
                 color = if (day.isToday) CrocBlue else CrocNeutralLight,
-                topLeft = Offset(x = barLeft, y = chartHeight - barHeight),
+                topLeft = Offset(x = barLeft, y = topPaddingPx + (chartHeight - barHeight)),
                 size = Size(barWidth, barHeight),
                 cornerRadius = CornerRadius(4.dp.toPx())
             )
@@ -64,7 +65,7 @@ fun NetworkBarChart(
                 textLayoutResult = measured,
                 topLeft = Offset(
                     x = barCenter - measured.size.width / 2f,
-                    y = chartHeight + 4.dp.toPx()
+                    y = topPaddingPx + chartHeight + 4.dp.toPx()
                 )
             )
         }
