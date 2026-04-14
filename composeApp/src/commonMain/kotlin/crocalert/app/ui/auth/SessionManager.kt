@@ -2,7 +2,15 @@ package crocalert.app.ui.auth
 
 import kotlinx.datetime.Clock
 
-private const val SESSION_DURATION_MS =  72 * 60 * 60 * 1000L // 72 hours
+private const val SESSION_DURATION_MS = 72 * 60 * 60 * 1000L // 72 hours
+
+/**
+ * Describes the session state detected at app launch.
+ *
+ * Derive this via [SessionManager.checkSession] — a single DataStore read guarantees
+ * a consistent result even if another coroutine modifies prefs concurrently.
+ */
+enum class SessionCheckResult { Active, Expired, None }
 
 object SessionManager {
 
@@ -14,71 +22,65 @@ object SessionManager {
     }
 
     /**
-     * Returns true if a remembered session exists and has not expired.
-     * Used by SplashScreen to decide whether to skip the login screen.
+     * Checks session state in a single atomic read and returns the result.
+     *
+     * This replaces the previous pair of [isSessionValid] + [isSessionExpired] calls,
+     * which were prone to a TOCTOU race: two separate DataStore reads could produce
+     * an inconsistent snapshot if another coroutine wrote prefs in between.
+     *
+     * Result semantics:
+     * - [SessionCheckResult.Active]  — session exists and has not expired.
+     * - [SessionCheckResult.Expired] — session existed but the expiry timestamp is in the past.
+     * - [SessionCheckResult.None]    — no session stored (first launch or after logout).
      */
-    suspend fun isSessionValid(): Boolean {
-        val expiresAt = prefs?.getSessionExpiresAt() ?: return false
-        return Clock.System.now().toEpochMilliseconds() < expiresAt
-    }
-
-    /**
-     * Returns true if a session was previously stored but has now expired.
-     * Used to show an "expired session" notice on the login screen.
-     */
-    suspend fun isSessionExpired(): Boolean {
-        val expiresAt = prefs?.getSessionExpiresAt() ?: return false
-        return Clock.System.now().toEpochMilliseconds() >= expiresAt
+    suspend fun checkSession(): SessionCheckResult {
+        val expiresAt = prefs?.getSessionExpiresAt() ?: return SessionCheckResult.None
+        return if (Clock.System.now().toEpochMilliseconds() < expiresAt) {
+            SessionCheckResult.Active
+        } else {
+            SessionCheckResult.Expired
+        }
     }
 
     /** Returns the email saved by a previous "Recordar dispositivo" login, or null. */
     suspend fun getSavedEmail(): String? = prefs?.getSavedEmail()
 
     /**
-     * Updates the remembered-device state after a successful authentication.
+     * Atomically updates the remembered-device state after a successful authentication.
      *
      * - [remember] = true  -> persists [email] and starts a session window.
      * - [remember] = false -> clears both the saved email and any active session.
+     *
+     * Both values are written in a single DataStore transaction to prevent inconsistent
+     * state if the process is killed between two separate writes.
      */
     suspend fun updateRememberDevice(email: String, remember: Boolean) {
         if (remember) {
-            prefs?.setSavedEmail(email)
-            prefs?.setSessionExpiresAt(Clock.System.now().toEpochMilliseconds() + SESSION_DURATION_MS)
+            val expiresAt = Clock.System.now().toEpochMilliseconds() + SESSION_DURATION_MS
+            prefs?.updateSession(email = email, expiresAt = expiresAt)
         } else {
-            prefs?.setSavedEmail(null)
-            prefs?.setSessionExpiresAt(null)
+            prefs?.updateSession(email = null, expiresAt = null)
         }
     }
 
     /**
      * Ends the active session on explicit logout.
-     * The session expiry is cleared (next launch will require login) but the
-     * saved email is preserved so the login form can pre-fill it.
+     *
+     * Both the session expiry and the saved email are cleared. The email is not
+     * preserved after logout to prevent a previous user's email from being pre-filled
+     * when a different user logs in on the same device.
      */
     suspend fun logout() {
-        prefs?.setSessionExpiresAt(null)
+        prefs?.updateSession(email = null, expiresAt = null)
         crocalert.app.shared.UserSession.clear()
     }
 
     /**
-     * Returns the milliseconds remaining until the session expires, or null if no session is stored.
-     * A value of 0 means the session is already expired.
+     * Returns the milliseconds remaining until the session expires, or null if no session
+     * is stored. A value of 0 means the session is already expired.
      */
     suspend fun sessionRemainingMs(): Long? {
         val expiresAt = prefs?.getSessionExpiresAt() ?: return null
         return maxOf(0L, expiresAt - Clock.System.now().toEpochMilliseconds())
-    }
-
-    /** Temporary debug helper — remove before release. */
-    suspend fun debugInfo(): String {
-        val expiresAt = prefs?.getSessionExpiresAt()
-        val email = prefs?.getSavedEmail()
-        val now = Clock.System.now().toEpochMilliseconds()
-        return if (expiresAt == null) {
-            "No session. Email='$email'"
-        } else {
-            val remainingMs = expiresAt - now
-            "Email='$email' | Remaining: ${remainingMs}ms | Valid: ${remainingMs > 0}"
-        }
     }
 }

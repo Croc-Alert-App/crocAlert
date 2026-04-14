@@ -9,4 +9,9 @@ class InMemorySessionPreferences : SessionPreferences {
 
     override suspend fun getSessionExpiresAt(): Long? = sessionExpiresAt
     override suspend fun setSessionExpiresAt(expiresAt: Long?) { sessionExpiresAt = expiresAt }
+
+    override suspend fun updateSession(email: String?, expiresAt: Long?) {
+        savedEmail = email
+        sessionExpiresAt = expiresAt
+    }
 }
