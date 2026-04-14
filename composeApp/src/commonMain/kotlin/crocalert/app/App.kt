@@ -47,6 +47,9 @@ fun App() {
     val totpSetup by authViewModel.totpSetup.collectAsState()
     val totpSetupError by authViewModel.totpSetupError.collectAsState()
     val enrollError by authViewModel.enrollError.collectAsState()
+    val passwordResetSent by authViewModel.passwordResetSent.collectAsState()
+    val passwordResetError by authViewModel.passwordResetError.collectAsState()
+    val isPasswordResetLoading by authViewModel.isPasswordResetLoading.collectAsState()
 
     NavHost(navController = navController, startDestination = "splash") {
         composable("splash") {
@@ -110,7 +113,16 @@ fun App() {
             )
         }
         composable("forgot_password") {
-            ForgotPasswordScreen(onBack = { navController.popBackStack() })
+            ForgotPasswordScreen(
+                isSending = isPasswordResetLoading,
+                emailSent = passwordResetSent,
+                sendError = passwordResetError,
+                onSend = { email -> authViewModel.sendPasswordReset(email) },
+                onBack = {
+                    authViewModel.clearPasswordResetState()
+                    navController.popBackStack()
+                },
+            )
         }
         composable("mfa") {
             MfaScreen(
@@ -148,15 +160,25 @@ fun App() {
         }
         composable("home") {
             var showSessionExpiredDialog by remember { mutableStateOf(false) }
+            var isNavigatingOut by remember { mutableStateOf(false) }
+            // Read the session expiry timestamp once on entry. Keying the timer
+            // LaunchedEffect on this value means the timer restarts if the session
+            // is renewed while the user is on this screen (e.g., silent token refresh).
+            var sessionExpiryMs by remember { mutableStateOf<Long?>(null) }
 
-            // Wait exactly until the session expires, then surface the dialog.
-            // LaunchedEffect is cancelled automatically when leaving this destination.
             LaunchedEffect(Unit) {
-                val remainingMs = SessionManager.sessionRemainingMs()
-                if (remainingMs != null) {
-                    if (remainingMs > 0L) delay(remainingMs)
-                    showSessionExpiredDialog = true
-                }
+                sessionExpiryMs = SessionManager.sessionRemainingMs()
+                    ?.takeIf { it > 0L }
+                    ?.let { System.currentTimeMillis() + it }
+            }
+
+            // Timer is keyed on the expiry timestamp rather than Unit so it restarts
+            // automatically if sessionExpiryMs is updated.
+            LaunchedEffect(sessionExpiryMs) {
+                val expiryMs = sessionExpiryMs ?: return@LaunchedEffect
+                val remaining = (expiryMs - System.currentTimeMillis()).coerceAtLeast(0L)
+                if (remaining > 0L) delay(remaining)
+                showSessionExpiredDialog = true
             }
 
             if (showSessionExpiredDialog) {
@@ -165,16 +187,21 @@ fun App() {
                     title = { Text("Sesión expirada") },
                     text = { Text("Tu sesión ha expirado. Por favor, inicia sesión nuevamente.") },
                     confirmButton = {
-                        TextButton(onClick = {
-                            showSessionExpiredDialog = false
-                            sessionExpired = true
-                            scope.launch {
-                                SessionManager.logout()
-                                navController.navigate("login") {
-                                    popUpTo("home") { inclusive = true }
+                        TextButton(
+                            enabled = !isNavigatingOut,
+                            onClick = {
+                                if (isNavigatingOut) return@TextButton
+                                isNavigatingOut = true
+                                showSessionExpiredDialog = false
+                                sessionExpired = true
+                                scope.launch {
+                                    SessionManager.logout()
+                                    navController.navigate("login") {
+                                        popUpTo("home") { inclusive = true }
+                                    }
                                 }
-                            }
-                        }) { Text("Aceptar") }
+                            },
+                        ) { Text("Aceptar") }
                     },
                 )
             }
