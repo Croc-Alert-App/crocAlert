@@ -93,6 +93,7 @@ class AlertService : AlertServicePort {
             status = "OPEN",
             priority = if (folder == "alertas") "HIGH" else "MEDIUM",
             title = getString("name") ?: "",
+            thumbnailUrl = getString("driveUrl") ?: "",
             folder = folder,
         )
     }

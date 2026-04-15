@@ -29,6 +29,7 @@ fun AlertDto.toModel(): Alert = Alert(
     closedAt = closedAt,
     notes = notes,
     title = title,
+    thumbnailUrl = thumbnailUrl,
     folder = folder,
     type = alertTypeFromFolder(folder),
 )
@@ -45,5 +46,6 @@ fun Alert.toDto(): AlertDto = AlertDto(
     closedAt = closedAt,
     notes = notes,
     title = title,
+    thumbnailUrl = thumbnailUrl,
     folder = folder,
 )
