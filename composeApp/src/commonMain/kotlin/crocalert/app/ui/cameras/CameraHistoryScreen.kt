@@ -1,44 +1,17 @@
 package crocalert.app.ui.cameras
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.background
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
-import androidx.compose.material.icons.outlined.CalendarMonth
-import androidx.compose.material.icons.outlined.ChevronLeft
-import androidx.compose.material.icons.outlined.ChevronRight
-import androidx.compose.material.icons.outlined.Edit
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.outlined.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.Alignment
@@ -48,11 +21,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import crocalert.app.theme.CrocAmber
-import crocalert.app.theme.CrocBlue
-import crocalert.app.theme.CrocBlueLight
-import crocalert.app.theme.CrocNeutralDark
-import crocalert.app.theme.CrocWhite
+import crocalert.app.theme.*
 import crocalert.app.ui.cameras.components.CaptureGridSection
 import kotlinx.datetime.LocalDate
 
@@ -70,8 +39,16 @@ fun CameraHistoryScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
+    val captureSlots = remember(
+        uiState.received,
+        uiState.missing,
+        uiState.expected
+    ) {
+        buildSlots(uiState.received, uiState.missing, uiState.expected)
+    }
+
     Column(modifier = Modifier.fillMaxSize()) {
-        // — Header ————————————————————————————————————————————————————————————
+
         HistoryHeader(cameraName = uiState.cameraName, onBack = onBack, onEdit = onEditClick)
 
         Column(
@@ -80,9 +57,9 @@ fun CameraHistoryScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 16.dp),
         ) {
+
             Spacer(Modifier.height(12.dp))
 
-            // — Date + Stats card ————————————————————————————————————————————
             Card(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
@@ -90,15 +67,18 @@ fun CameraHistoryScreen(
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
+
                     DateNavigationRow(
                         date = uiState.selectedDate,
                         canGoNext = uiState.canGoNext,
                         onPrev = viewModel::prevDay,
                         onNext = viewModel::nextDay,
                     )
+
                     Spacer(Modifier.height(12.dp))
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                     Spacer(Modifier.height(12.dp))
+
                     CaptureStatsRow(
                         received = uiState.received,
                         missing = uiState.missing,
@@ -110,7 +90,6 @@ fun CameraHistoryScreen(
 
             Spacer(Modifier.height(12.dp))
 
-            // — Progress card ————————————————————————————————————————————————
             Card(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
@@ -118,6 +97,7 @@ fun CameraHistoryScreen(
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
+
                     if (uiState.isLoading) {
                         Box(
                             modifier = Modifier.fillMaxWidth().height(64.dp),
@@ -138,7 +118,6 @@ fun CameraHistoryScreen(
 
             Spacer(Modifier.height(12.dp))
 
-            // — Cadencia card ————————————————————————————————————————————————
             Card(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
@@ -146,14 +125,17 @@ fun CameraHistoryScreen(
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
+
                     Text(
                         text = "Cadencia esperada vs actual",
                         style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
                         color = MaterialTheme.colorScheme.onSurface,
                     )
+
                     Spacer(Modifier.height(12.dp))
-                    if (uiState.captureSlots.isNotEmpty()) {
-                        CaptureGridSection(slots = uiState.captureSlots)
+
+                    if (captureSlots.isNotEmpty()) {
+                        CaptureGridSection(slots = captureSlots)
                     }
                 }
             }
@@ -163,22 +145,35 @@ fun CameraHistoryScreen(
     }
 }
 
-// — Private sub-composables ————————————————————————————————————————————————
+// =======================
+// LOGICA SLOTS
+// =======================
+
+fun buildSlots(received: Int, missing: Int, expected: Int): List<CaptureSlot> {
+    val slots = mutableListOf<CaptureSlot>()
+    for (i in 0 until expected) {
+        val state = when {
+            i < received -> CaptureSlotState.Received
+            i < received + missing -> CaptureSlotState.Missing
+            else -> CaptureSlotState.Expected
+        }
+        slots.add(CaptureSlot(hour = i, state = state))
+    }
+    return slots
+}
+
+// =======================
+// COMPONENTES FALTANTES
+// =======================
 
 @Composable
 private fun HistoryHeader(cameraName: String, onBack: () -> Unit, onEdit: () -> Unit) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 4.dp, vertical = 4.dp),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         IconButton(onClick = onBack) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
-                contentDescription = "Volver",
-                tint = CrocBlue,
-            )
+            Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Volver", tint = CrocBlue)
         }
         Column(modifier = Modifier.weight(1f)) {
             Text(
@@ -193,11 +188,7 @@ private fun HistoryHeader(cameraName: String, onBack: () -> Unit, onEdit: () -> 
             )
         }
         IconButton(onClick = onEdit) {
-            Icon(
-                imageVector = Icons.Outlined.Edit,
-                contentDescription = "Editar cámara",
-                tint = CrocBlue,
-            )
+            Icon(Icons.Outlined.Edit, contentDescription = "Editar cámara", tint = CrocBlue)
         }
     }
 }
@@ -215,11 +206,7 @@ private fun DateNavigationRow(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         IconButton(onClick = onPrev) {
-            Icon(
-                imageVector = Icons.Outlined.ChevronLeft,
-                contentDescription = "Día anterior",
-                tint = CrocBlue,
-            )
+            Icon(Icons.Outlined.ChevronLeft, contentDescription = "Día anterior", tint = CrocBlue)
         }
 
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -229,17 +216,12 @@ private fun DateNavigationRow(
                 color = MaterialTheme.colorScheme.onSurface,
             )
             Spacer(Modifier.width(6.dp))
-            Icon(
-                imageVector = Icons.Outlined.CalendarMonth,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(18.dp),
-            )
+            Icon(Icons.Outlined.CalendarMonth, contentDescription = null, modifier = Modifier.size(18.dp))
         }
 
         IconButton(onClick = onNext, enabled = canGoNext) {
             Icon(
-                imageVector = Icons.Outlined.ChevronRight,
+                Icons.Outlined.ChevronRight,
                 contentDescription = "Día siguiente",
                 tint = if (canGoNext) CrocBlue else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
             )
@@ -257,73 +239,10 @@ private fun CaptureStatsRow(
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceEvenly,
-        verticalAlignment = Alignment.CenterVertically,
     ) {
-        CaptureStatChip(label = "Recibidas", count = received, color = CrocBlue)
-        CaptureStatChip(label = "Perdidas", count = missing, color = CrocAmber)
-        ExpectedStepper(value = expectedPerDay, onValueChange = onExpectedChange)
-    }
-}
-
-@Composable
-private fun ExpectedStepper(value: Int, onValueChange: (Int) -> Unit) {
-    var text by remember(value) { mutableStateOf("$value") }
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(
-            text = "Esperadas",
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Spacer(Modifier.height(4.dp))
-        BasicTextField(
-            value = text,
-            onValueChange = { raw ->
-                val filtered = raw.filter { it.isDigit() }.take(2)
-                text = filtered
-                filtered.toIntOrNull()?.coerceIn(1, 48)?.let { onValueChange(it) }
-            },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            singleLine = true,
-            textStyle = MaterialTheme.typography.titleMedium.copy(
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface,
-                textAlign = TextAlign.Center,
-            ),
-            decorationBox = { innerTextField ->
-                Box(
-                    modifier = Modifier
-                        .background(CrocBlueLight.copy(alpha = 0.25f), RoundedCornerShape(6.dp))
-                        .padding(horizontal = 10.dp, vertical = 6.dp)
-                        .width(52.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    innerTextField()
-                }
-            },
-        )
-    }
-}
-
-@Composable
-private fun CaptureStatChip(label: String, count: Int, color: Color) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Spacer(Modifier.height(4.dp))
-        Surface(
-            shape = RoundedCornerShape(6.dp),
-            color = color,
-        ) {
-            Text(
-                text = "$count",
-                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                color = CrocWhite,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
-            )
-        }
+        CaptureStatChip("Recibidas", received, CrocBlue)
+        CaptureStatChip("Perdidas", missing, CrocAmber)
+        ExpectedStepper(expectedPerDay, onExpectedChange)
     }
 }
 
@@ -335,22 +254,25 @@ private fun CaptureProgressSection(
     integrityFlags: Int,
 ) {
     val fillRatio = received.toFloat() / expected.coerceAtLeast(1)
-    val progressColor = if (fillRatio >= INTEGRITY_THRESHOLD) CrocNeutralDark else CrocAmber
+    val isComplete = received >= expected
 
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
+    val progressColor = when {
+        isComplete -> CrocBlue
+        fillRatio >= INTEGRITY_THRESHOLD -> CrocNeutralDark
+        else -> CrocAmber
+    }
+
+    val textColor = if (isComplete) CrocBlue else MaterialTheme.colorScheme.onSurfaceVariant
+
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
         Text(
-            text = "Captura de imgs (24h)",
+            "Captura de imgs (24h)",
             style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
-            color = MaterialTheme.colorScheme.onSurface,
         )
         Text(
-            text = "$received / $expected esperadas",
+            "$received / $expected esperadas",
             style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = textColor
         )
     }
 
@@ -358,10 +280,7 @@ private fun CaptureProgressSection(
 
     LinearProgressIndicator(
         progress = { fillRatio },
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(6.dp)
-            .clip(RoundedCornerShape(3.dp)),
+        modifier = Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(3.dp)),
         color = progressColor,
         trackColor = MaterialTheme.colorScheme.surfaceVariant,
     )
@@ -369,10 +288,59 @@ private fun CaptureProgressSection(
     Spacer(Modifier.height(6.dp))
 
     Text(
-        text = "$missing capturas faltantes · $integrityFlags alertas de integridad",
+        "$missing capturas faltantes · $integrityFlags alertas de integridad",
         style = MaterialTheme.typography.labelSmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
+}
+
+@Composable
+private fun CaptureStatChip(label: String, count: Int, color: Color) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(label)
+        Spacer(Modifier.height(4.dp))
+        Surface(color = color, shape = RoundedCornerShape(6.dp)) {
+            Text(
+                "$count",
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+                color = CrocWhite,
+                fontWeight = FontWeight.Bold
+            )
+        }
+    }
+}
+
+@Composable
+private fun ExpectedStepper(value: Int, onValueChange: (Int) -> Unit) {
+    var text by remember(value) { mutableStateOf("$value") }
+
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text("Esperadas")
+        Spacer(Modifier.height(4.dp))
+        BasicTextField(
+            value = text,
+            onValueChange = {
+                val filtered = it.filter { c -> c.isDigit() }.take(2)
+                text = filtered
+                filtered.toIntOrNull()?.coerceIn(1, 48)?.let(onValueChange)
+            },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            textStyle = MaterialTheme.typography.titleMedium.copy(
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center
+            ),
+            decorationBox = { inner ->
+                Box(
+                    modifier = Modifier
+                        .background(CrocBlueLight.copy(alpha = 0.25f), RoundedCornerShape(6.dp))
+                        .padding(horizontal = 10.dp, vertical = 6.dp)
+                        .width(52.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    inner()
+                }
+            }
+        )
+    }
 }
 
 private fun LocalDate.displayFormat(): String =
