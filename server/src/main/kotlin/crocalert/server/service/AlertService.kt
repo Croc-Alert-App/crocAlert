@@ -109,6 +109,7 @@ class AlertService : AlertServicePort {
             status = AlertStatus.OPEN.name,
             priority = if (folder == "alertas") AlertPriority.HIGH.name else AlertPriority.MEDIUM.name,
             title = getString("name") ?: "",
+            thumbnailUrl = getString("driveUrl") ?: "",
             folder = folder,
         )
     }

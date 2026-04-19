@@ -45,6 +45,7 @@ object AlertSampleData {
                     sourceName = "CAM-12 Río Conchal",
                     isRead = false,
                     folder = "alertas",
+                    thumbnailUrl = "https://drive.google.com/file/d/17458lCf5kwIodwI6hZ0j0E5VOrDu61_Y/view?usp=drivesdk",
                 ),
                 Alert(
                     id = "alert-002",
@@ -57,6 +58,7 @@ object AlertSampleData {
                     sourceName = "CAM-08 Laguna Norte",
                     isRead = false,
                     folder = "alertas",
+                    thumbnailUrl = "https://drive.google.com/file/d/17458lCf5kwIodwI6hZ0j0E5VOrDu61_Y/view?usp=drivesdk",
                 ),
                 Alert(
                     id = "alert-003",
@@ -69,6 +71,7 @@ object AlertSampleData {
                     sourceName = "CAM-03 Sector Este",
                     isRead = true,
                     folder = "pre-alertas",
+                    thumbnailUrl = "https://drive.google.com/file/d/17458lCf5kwIodwI6hZ0j0E5VOrDu61_Y/view?usp=drivesdk",
                 ),
                 Alert(
                     id = "alert-004",
@@ -81,6 +84,7 @@ object AlertSampleData {
                     sourceName = "CAM-05 Margen Sur",
                     isRead = true,
                     folder = "pre-alertas",
+                    thumbnailUrl = "https://drive.google.com/file/d/17458lCf5kwIodwI6hZ0j0E5VOrDu61_Y/view?usp=drivesdk",
                 ),
                 Alert(
                     id = "alert-007",
@@ -93,6 +97,7 @@ object AlertSampleData {
                     sourceName = "CAM-02 Acceso Principal",
                     isRead = false,
                     folder = "alertas",
+                    thumbnailUrl = "https://drive.google.com/file/d/17458lCf5kwIodwI6hZ0j0E5VOrDu61_Y/view?usp=drivesdk",
                 ),
                 Alert(
                     id = "alert-008",
@@ -105,6 +110,7 @@ object AlertSampleData {
                     sourceName = "CAM-09 Laguna Este",
                     isRead = true,
                     folder = "alertas",
+                    thumbnailUrl = "https://drive.google.com/file/d/17458lCf5kwIodwI6hZ0j0E5VOrDu61_Y/view?usp=drivesdk",
                 ),
                 Alert(
                     id = "alert-009",
@@ -117,6 +123,7 @@ object AlertSampleData {
                     sourceName = "CAM-07 Zona Oeste",
                     isRead = true,
                     folder = "pre-alertas",
+                    thumbnailUrl = "https://drive.google.com/file/d/17458lCf5kwIodwI6hZ0j0E5VOrDu61_Y/view?usp=drivesdk",
                 ),
                 Alert(
                     id = "alert-005",
