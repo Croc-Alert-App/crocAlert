@@ -1,7 +1,17 @@
 package crocalert.app.ui.cameras
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -9,19 +19,40 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
-import androidx.compose.material.icons.outlined.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.ChevronLeft
+import androidx.compose.material.icons.outlined.ChevronRight
+import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import crocalert.app.theme.*
+import crocalert.app.theme.CrocAmber
+import crocalert.app.theme.CrocBlue
+import crocalert.app.theme.CrocBlueLight
+import crocalert.app.theme.CrocNeutralDark
+import crocalert.app.theme.CrocWhite
 import crocalert.app.ui.cameras.components.CaptureGridSection
 import kotlinx.datetime.LocalDate
 
@@ -38,14 +69,6 @@ fun CameraHistoryScreen(
     },
 ) {
     val uiState by viewModel.uiState.collectAsState()
-
-    val captureSlots = remember(
-        uiState.received,
-        uiState.missing,
-        uiState.expected
-    ) {
-        buildSlots(uiState.received, uiState.missing, uiState.expected)
-    }
 
     Column(modifier = Modifier.fillMaxSize()) {
 
@@ -134,8 +157,21 @@ fun CameraHistoryScreen(
 
                     Spacer(Modifier.height(12.dp))
 
-                    if (captureSlots.isNotEmpty()) {
-                        CaptureGridSection(slots = captureSlots)
+                    // P32: use VM-computed slots (preserves IntegrityFlag state)
+                    if (uiState.captureSlots.isNotEmpty()) {
+                        CaptureGridSection(slots = uiState.captureSlots)
+                    } else if (!uiState.isLoading) {
+                        // P31: show explicit empty state instead of a cut-off card
+                        Box(
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "Sin capturas registradas para este día",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
                 }
             }
@@ -144,27 +180,6 @@ fun CameraHistoryScreen(
         }
     }
 }
-
-// =======================
-// LOGICA SLOTS
-// =======================
-
-fun buildSlots(received: Int, missing: Int, expected: Int): List<CaptureSlot> {
-    val slots = mutableListOf<CaptureSlot>()
-    for (i in 0 until expected) {
-        val state = when {
-            i < received -> CaptureSlotState.Received
-            i < received + missing -> CaptureSlotState.Missing
-            else -> CaptureSlotState.Expected
-        }
-        slots.add(CaptureSlot(hour = i, state = state))
-    }
-    return slots
-}
-
-// =======================
-// COMPONENTES FALTANTES
-// =======================
 
 @Composable
 private fun HistoryHeader(cameraName: String, onBack: () -> Unit, onEdit: () -> Unit) {
@@ -321,7 +336,9 @@ private fun ExpectedStepper(value: Int, onValueChange: (Int) -> Unit) {
             onValueChange = {
                 val filtered = it.filter { c -> c.isDigit() }.take(2)
                 text = filtered
-                filtered.toIntOrNull()?.coerceIn(1, 48)?.let(onValueChange)
+                // P33: always propagate — empty string resets to 1 so VM and field stay in sync
+                val parsed = filtered.toIntOrNull()?.coerceIn(1, 48) ?: 1
+                onValueChange(parsed)
             },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             textStyle = MaterialTheme.typography.titleMedium.copy(

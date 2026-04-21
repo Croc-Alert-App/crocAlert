@@ -83,7 +83,6 @@ fun ProfileScreen(
 
         Spacer(Modifier.height(20.dp))
 
-        // ── User info card ─────────────────────────────────────────────────────
         Surface(
             shape = RoundedCornerShape(12.dp),
             color = MaterialTheme.colorScheme.surface,
@@ -124,7 +123,6 @@ fun ProfileScreen(
         if (isAdmin) {
             Spacer(Modifier.height(28.dp))
 
-            // ── Sync settings section (admin only) ────────────────────────────
             Text(
                 text = "Configuración de sincronización",
                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
@@ -232,9 +230,9 @@ private fun TtlRow(
             BasicTextField(
                 value = text,
                 onValueChange = { raw ->
-                    val filtered = raw.filter { it.isDigit() }.take(3)
+                    val filtered = raw.filter { it.isDigit() }.take(4)
                     text = filtered
-                    filtered.toIntOrNull()?.coerceIn(1, 120)?.let { onValueChange(it) }
+                    filtered.toIntOrNull()?.coerceIn(1, 1440)?.let { onValueChange(it) }
                 },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 singleLine = true,

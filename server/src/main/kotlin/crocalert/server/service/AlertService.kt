@@ -96,7 +96,6 @@ class AlertService : AlertServicePort {
         }
     }
 
-    /** Maps an imagenes_drive capture document to an AlertDto for the mobile client. */
     private fun DocumentSnapshot.toCaptureAlertDto(): AlertDto? {
         val folder = getString("folder") ?: return null
         return AlertDto(
@@ -109,7 +108,10 @@ class AlertService : AlertServicePort {
             status = AlertStatus.OPEN.name,
             priority = if (folder == "alertas") AlertPriority.HIGH.name else AlertPriority.MEDIUM.name,
             title = getString("name") ?: "",
-            thumbnailUrl = getString("driveUrl") ?: "",
+            // P19: coerce to null so the client's thumbnailUrl?.let skips cleanly on missing images
+            // P20: only allow https://drive.google.com URLs — prevents javascript:/file:// injection
+            thumbnailUrl = getString("driveUrl")
+                ?.takeIf { it.isNotBlank() && it.startsWith("https://drive.google.com/") },
             folder = folder,
         )
     }
