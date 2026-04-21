@@ -21,6 +21,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.DateRange
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -306,8 +307,15 @@ private fun CustomRangeBar(
                     .padding(horizontal = 14.dp, vertical = 6.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
+                Icon(
+                    imageVector = Icons.Outlined.DateRange,
+                    contentDescription = null,
+                    tint = CrocWhite,
+                    modifier = Modifier.size(16.dp),
+                )
+                Spacer(Modifier.width(6.dp))
                 Text(
-                    text = "📅  ${formatDateMs(customRange.startMs)} – ${formatDateMs(customRange.endMs)}",
+                    text = "${formatDateMs(customRange.startMs)} – ${formatDateMs(customRange.endMs)}",
                     color = CrocWhite,
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.SemiBold,
@@ -336,8 +344,15 @@ private fun CustomRangeBar(
             modifier = modifier,
             contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
         ) {
+            Icon(
+                imageVector = Icons.Outlined.DateRange,
+                contentDescription = null,
+                tint = CrocBlue,
+                modifier = Modifier.size(16.dp),
+            )
+            Spacer(Modifier.width(6.dp))
             Text(
-                text = "📅  Rango de fechas personalizado",
+                text = "Personalizado",
                 style = MaterialTheme.typography.bodySmall,
                 color = CrocBlue,
             )
