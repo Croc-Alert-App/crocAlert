@@ -23,7 +23,8 @@ fun BottomNavBar(
 ) {
     val itemColors = NavigationBarItemDefaults.colors(
         selectedIconColor = CrocBlue,
-        selectedTextColor = CrocBlue
+        selectedTextColor = CrocBlue,
+        indicatorColor = CrocBlue.copy(alpha = 0.12f),
     )
     NavigationBar(containerColor = MaterialTheme.colorScheme.surface) {
         if (DashboardTab.Home in visibleTabs) {

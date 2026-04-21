@@ -9,7 +9,6 @@ import crocalert.app.shared.AppModule
 import crocalert.app.shared.network.ApiResult
 import crocalert.app.shared.sync.SyncPreferencesProvider
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -17,12 +16,9 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 import kotlinx.datetime.DateTimeUnit
-import kotlinx.datetime.DayOfWeek
-import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.atStartOfDayIn
 import kotlinx.datetime.minus
-import kotlinx.datetime.plus
 import kotlinx.datetime.toLocalDateTime
 import kotlinx.datetime.todayIn
 
@@ -44,10 +40,6 @@ class DashboardViewModel(
     private val _selectedTab = MutableStateFlow(DashboardTab.Home)
     val selectedTab: StateFlow<DashboardTab> = _selectedTab.asStateFlow()
 
-    // Trend range — null means "default 7 days ending today".
-    private val _trendStartMs = MutableStateFlow<Long?>(null)
-    private val _trendEndMs   = MutableStateFlow<Long?>(null)
-
     private var loadJob: Job? = null
 
     init {
@@ -56,13 +48,6 @@ class DashboardViewModel(
 
     fun selectTab(tab: DashboardTab) {
         _selectedTab.value = tab
-    }
-
-    fun setTrendRange(startMs: Long, endMs: Long) {
-        _trendStartMs.value = startMs
-        _trendEndMs.value = endMs
-        _uiState.value = DashboardUiState.Loading
-        loadData()
     }
 
     fun setAlertWindowDays(days: Int) {
@@ -87,40 +72,10 @@ class DashboardViewModel(
         loadJob = viewModelScope.launch {
             val tz = TimeZone.currentSystemDefault()
             val today = Clock.System.todayIn(tz)
-
-            // ── Resolve trend date range ──────────────────────────────────────
             val todayStr = today.toString()
-            val trendDates: List<LocalDate> = run {
-                val startMs = _trendStartMs.value
-                val endMs   = _trendEndMs.value
-                if (startMs != null && endMs != null) {
-                    val startDate = kotlinx.datetime.Instant.fromEpochMilliseconds(startMs)
-                        .toLocalDateTime(tz).date
-                    val endDate = kotlinx.datetime.Instant.fromEpochMilliseconds(endMs)
-                        .toLocalDateTime(tz).date
-                    val days = mutableListOf<LocalDate>()
-                    var current = startDate
-                    while (current <= endDate && days.size < 31) {
-                        days.add(current)
-                        current = current.plus(1, DateTimeUnit.DAY)
-                    }
-                    days
-                } else {
-                    (6 downTo 0).map { offset -> today.minus(offset, DateTimeUnit.DAY) }
-                }
-            }
 
-            val todayDashboardDeferred = async {
-                cameraRepository.getMonitoringDashboard(todayStr)
-            }
-            val trendDeferreds = trendDates.map { date ->
-                async { cameraRepository.getMonitoringDashboard(date.toString()) }
-            }
+            val todayDashboard = cameraRepository.getMonitoringDashboard(todayStr)
 
-            val todayDashboard = todayDashboardDeferred.await()
-            val trendResults = trendDeferreds.map { it.await() }
-
-            // ── Build KPI base from dashboard ──
             val activeCameras: Int
             val totalCameras: Int
             val networkHealthPct: Float
@@ -132,7 +87,14 @@ class DashboardViewModel(
                     val d = todayDashboard.data
                     activeCameras = d.activeCameras
                     totalCameras = d.totalCameras
-                    networkHealthPct = d.healthyRate.toFloat()
+                    // Per-camera average capture rate — each camera contributes equally
+                    // regardless of expected count, so a Precaución camera at 50% adds 50%,
+                    // not 0% as the server's RISK bucket would imply.
+                    val activeCams = d.cameras.filter { it.isActive }
+                    networkHealthPct = if (activeCams.isNotEmpty())
+                        (activeCams.sumOf { it.captureRate } / activeCams.size)
+                            .toFloat().coerceIn(0f, 100f)
+                    else 0f
                     captureRatePct = d.globalCaptureRate.toFloat()
                     captureRateLabel = "${d.receivedImagesTotal}/${d.expectedImagesTotal}"
                 }
@@ -143,26 +105,9 @@ class DashboardViewModel(
                 }
             }
 
-            // ── Build trend ───────────────────────────────────────────────────
-            val useDateNumbers = trendDates.size > 7
-            val networkTrend = trendDates.mapIndexed { index, date ->
-                val healthRate = when (val res = trendResults[index]) {
-                    is ApiResult.Success -> res.data.healthyRate.toFloat()
-                    is ApiResult.Error -> 0f
-                }
-                val dayLabel = if (useDateNumbers) "${date.dayOfMonth}" else dayAbbreviation(date.dayOfWeek)
-                NetworkTrendDay(
-                    label = dayLabel,
-                    value = healthRate,
-                    isToday = date == today
-                )
-            }
-
-            // ── Alert window from preferences ──
             val prefs = syncPrefsProvider.preferences.first()
             val windowDays = prefs.alertWindowDays
 
-            // ── Snapshot of current alerts (first() avoids an infinite collect that freezes the UI) ──
             val allAlerts = alertRepository.observeAlerts().first()
 
             val windowStartMs = Clock.System.now()
@@ -172,19 +117,18 @@ class DashboardViewModel(
                 .atStartOfDayIn(tz)
                 .toEpochMilliseconds()
 
-            val todayStartMs = today
-                .atStartOfDayIn(tz)
-                .toEpochMilliseconds()
-
             val windowAlerts = allAlerts
                 .filter { it.createdAt >= windowStartMs }
                 .sortedByDescending { it.createdAt }
 
-            val todayAlerts = allAlerts
-                .filter { it.createdAt >= todayStartMs }
-                .sortedByDescending { it.createdAt }
+            val activeAlertas = windowAlerts.count {
+                it.status == AlertStatus.OPEN && it.folder == "alertas"
+            }
+            val activePreAlertas = windowAlerts.count {
+                it.status == AlertStatus.OPEN && it.folder == "pre-alertas"
+            }
 
-            val recentActivity = todayAlerts.map { alert ->
+            val recentActivity = windowAlerts.map { alert ->
                 ActivityEvent(
                     title = alert.title,
                     timeAgo = formatRelativeTime(alert.createdAt),
@@ -192,6 +136,7 @@ class DashboardViewModel(
                         .replaceFirstChar { it.uppercase() },
                     isNew = !alert.isRead,
                     alertId = alert.id,
+                    folder = alert.folder,
                 )
             }
 
@@ -199,11 +144,11 @@ class DashboardViewModel(
                 activeCameras = activeCameras,
                 totalCameras = totalCameras,
                 networkHealthPct = networkHealthPct,
-                activeAlerts = windowAlerts.count { it.status == AlertStatus.OPEN },
+                activeAlertas = activeAlertas,
+                activePreAlertas = activePreAlertas,
                 alertWindowDays = windowDays,
                 captureRate = captureRateLabel,
                 captureRatePct = captureRatePct,
-                networkTrend = networkTrend,
                 recentActivity = recentActivity,
             )
 
@@ -212,17 +157,6 @@ class DashboardViewModel(
             _lastSynced.value = "${now.hour.toString().padStart(2, '0')}:${now.minute.toString().padStart(2, '0')}"
             _uiState.value = DashboardUiState.Success(data)
         }
-    }
-
-    private fun dayAbbreviation(dow: DayOfWeek): String = when (dow) {
-        DayOfWeek.MONDAY    -> "L"
-        DayOfWeek.TUESDAY   -> "M"
-        DayOfWeek.WEDNESDAY -> "X"
-        DayOfWeek.THURSDAY  -> "J"
-        DayOfWeek.FRIDAY    -> "V"
-        DayOfWeek.SATURDAY  -> "S"
-        DayOfWeek.SUNDAY    -> "D"
-        else                -> "?"
     }
 
     private fun formatRelativeTime(epochMillis: Long): String {

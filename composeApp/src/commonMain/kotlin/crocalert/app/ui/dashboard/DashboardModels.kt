@@ -4,15 +4,13 @@ data class DashboardData(
     val activeCameras: Int,
     val totalCameras: Int,
     val networkHealthPct: Float,
-    val activeAlerts: Int,
+    val activeAlertas: Int,
+    val activePreAlertas: Int,
     val alertWindowDays: Int,
     val captureRate: String,
     val captureRatePct: Float,
-    val networkTrend: List<NetworkTrendDay>,
     val recentActivity: List<ActivityEvent>
 )
-
-data class NetworkTrendDay(val label: String, val value: Float, val isToday: Boolean = false)
 
 data class ActivityEvent(
     val title: String,
@@ -20,6 +18,7 @@ data class ActivityEvent(
     val severity: String,
     val isNew: Boolean = false,
     val alertId: String? = null,
+    val folder: String? = null,
 )
 
 // Navigation and sync state — defined here so ViewModels never import from UI component files.

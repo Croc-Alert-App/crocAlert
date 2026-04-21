@@ -12,15 +12,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.DateRange
 import androidx.compose.material.icons.outlined.WifiOff
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
@@ -29,9 +25,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -39,7 +32,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import crocalert.app.feature.alerts.ui.AlertListScreen
-import crocalert.app.feature.alerts.ui.components.AlertDateRangePickerDialog
 import crocalert.app.shared.UserSession
 import crocalert.app.theme.CrocAmber
 import crocalert.app.theme.CrocBlue
@@ -66,7 +58,6 @@ fun DashboardScreen(
         listOf(DashboardTab.Home, DashboardTab.Alerts, DashboardTab.Profile)
     }
 
-    // If the currently selected tab is not visible for this role, reset to Home
     val effectiveTab = if (selectedTab in visibleTabs) selectedTab else DashboardTab.Home
 
     Scaffold(
@@ -92,7 +83,6 @@ fun DashboardScreen(
                         data = state.data,
                         onAlertClick = onAlertClick,
                         onAlertWindowSelected = { days -> viewModel.setAlertWindowDays(days) },
-                        onTrendRangeSelected = { startMs, endMs -> viewModel.setTrendRange(startMs, endMs) },
                     )
                     DashboardTab.Cameras -> CamerasScreen()
                     DashboardTab.Alerts -> AlertListScreen(onAlertClick = onAlertClick)
@@ -157,12 +147,10 @@ private fun DashboardContent(
     data: DashboardData,
     onAlertClick: (String) -> Unit,
     onAlertWindowSelected: (days: Int) -> Unit,
-    onTrendRangeSelected: (startMs: Long, endMs: Long) -> Unit,
 ) {
     LazyColumn(modifier = Modifier.fillMaxSize()) {
         item { HeaderSection(data, onAlertWindowSelected = onAlertWindowSelected) }
         item { StatsGridSection(data) }
-        item { NetworkTrendSection(data, onRangeSelected = onTrendRangeSelected) }
         item { RecentActivitySection(data, onAlertClick = onAlertClick) }
         item { Spacer(modifier = Modifier.height(16.dp)) }
     }
@@ -205,91 +193,49 @@ private fun HeaderSection(data: DashboardData, onAlertWindowSelected: (days: Int
 
 @Composable
 private fun StatsGridSection(data: DashboardData) {
+    val windowLabel = if (data.alertWindowDays == 1) "Hoy" else "Últimos ${data.alertWindowDays}d"
     Column(modifier = Modifier.padding(horizontal = 20.dp)) {
+        // Row 1 — Alertas + Pre-alertas
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            StatCard(
+                badge = "${data.activeAlertas}",
+                badgeColor = CrocAmber,
+                label = "Alertas",
+                value = "${data.activeAlertas}",
+                subtitle = windowLabel,
+                modifier = Modifier.weight(1f)
+            )
+            StatCard(
+                badge = "${data.activePreAlertas}",
+                badgeColor = CrocBlue,
+                label = "Pre-alertas",
+                value = "${data.activePreAlertas}",
+                subtitle = windowLabel,
+                modifier = Modifier.weight(1f)
+            )
+        }
+        Spacer(modifier = Modifier.height(12.dp))
+        // Row 2 — Cámaras activas + Tasa de captura
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             StatCard(
                 badge = "${data.activeCameras}",
                 badgeColor = CrocBlue,
                 label = "Cámaras activas",
-                value = "${(data.networkHealthPct * 100).toInt()}%",
+                value = "${data.networkHealthPct.coerceIn(0f, 100f).toInt()}%",
                 subtitle = "Salud de red",
                 modifier = Modifier.weight(1f)
             )
             StatCard(
-                badge = "${data.activeAlerts}",
-                badgeColor = CrocAmber,
-                label = "Alertas activas",
-                value = "${data.activeAlerts}",
-                subtitle = if (data.alertWindowDays == 1) "Hoy" else "Últimos ${data.alertWindowDays}d",
+                badge = "${data.captureRatePct.coerceIn(0f, 100f).toInt()}%",
+                badgeColor = CrocBlue,
+                label = "Tasa de captura",
+                value = data.captureRate,
+                subtitle = "recibidas / esperadas",
                 modifier = Modifier.weight(1f)
             )
         }
-        Spacer(modifier = Modifier.height(12.dp))
-        StatCard(
-            badge = "${(data.captureRatePct * 100).toInt()}%",
-            badgeColor = CrocBlue,
-            label = "Tasa de captura (hoy)",
-            value = data.captureRate,
-            subtitle = "imágenes recibidas / esperadas",
-            modifier = Modifier.fillMaxWidth()
-        )
         Spacer(modifier = Modifier.height(20.dp))
     }
-}
-
-@Composable
-private fun NetworkTrendSection(
-    data: DashboardData,
-    onRangeSelected: (startMs: Long, endMs: Long) -> Unit,
-) {
-    var showPicker by remember { mutableStateOf(false) }
-
-    if (showPicker) {
-        AlertDateRangePickerDialog(
-            onRangeSelected = { start, end ->
-                showPicker = false
-                onRangeSelected(start, end)
-            },
-            onDismiss = { showPicker = false },
-        )
-    }
-
-    Card(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = "Tendencia de la red (${data.networkTrend.size}d)",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = CrocBlue,
-                    modifier = Modifier.weight(1f),
-                )
-                IconButton(
-                    onClick = { showPicker = true },
-                    modifier = Modifier.size(32.dp),
-                ) {
-                    Icon(
-                        imageVector = Icons.Outlined.DateRange,
-                        contentDescription = "Seleccionar rango",
-                        tint = CrocBlue,
-                        modifier = Modifier.size(18.dp),
-                    )
-                }
-            }
-            Spacer(modifier = Modifier.height(8.dp))
-            NetworkBarChart(
-                data = data.networkTrend,
-                modifier = Modifier.fillMaxWidth().height(100.dp)
-            )
-        }
-    }
-    Spacer(modifier = Modifier.height(20.dp))
 }
 
 @Composable
@@ -303,7 +249,7 @@ private fun RecentActivitySection(data: DashboardData, onAlertClick: (String) ->
         Spacer(modifier = Modifier.height(12.dp))
         if (data.recentActivity.isEmpty()) {
             Text(
-                text = "Sin actividad reciente hoy.",
+                text = "Sin actividad reciente.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

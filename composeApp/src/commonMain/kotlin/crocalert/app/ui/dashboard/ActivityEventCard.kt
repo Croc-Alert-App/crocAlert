@@ -18,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import crocalert.app.theme.CrocAmber
+import crocalert.app.theme.CrocBlue
 import crocalert.app.theme.CrocWhite
 
 @Composable
@@ -51,13 +52,19 @@ fun ActivityEventCard(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            if (event.isNew) {
+            val typeLabel = when (event.folder) {
+                "alertas" -> "ALERTA"
+                "pre-alertas" -> "PRE-ALERTA"
+                else -> null
+            }
+            if (typeLabel != null) {
+                val labelColor = if (event.folder == "alertas") CrocAmber else CrocBlue
                 Surface(
                     shape = MaterialTheme.shapes.extraSmall,
-                    color = CrocAmber
+                    color = labelColor
                 ) {
                     Text(
-                        text = "NUEVO",
+                        text = typeLabel,
                         style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
                         color = CrocWhite,
                         modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
