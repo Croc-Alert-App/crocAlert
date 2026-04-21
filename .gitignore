@@ -34,3 +34,8 @@ _bmad-output/
 _bmad/
 # Docs
 docs/diagrams/
+# JVM crash dumps (D1)
+hs_err_pid*.log
+replay_pid*.log
+# Dev artifacts in server module (D2)
+server/img.png

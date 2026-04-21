@@ -44,6 +44,7 @@ googleServices = "4.4.2"
 firebaseBom    = "33.1.0"
 firebaseAuth   = "23.0.0"
 qrose          = "1.0.1"
+kamel          = "0.9.3"
 
 [libraries]
 # ---------- Android core ----------
@@ -128,6 +129,7 @@ firebaseBom                   = { module = "com.google.firebase:firebase-bom",  
 firebaseAuthKtx               = { module = "com.google.firebase:firebase-auth-ktx",          version.ref = "firebaseAuth" }
 kotlinxCoroutinesPlayServices = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-play-services", version.ref = "kotlinxCoroutines" }
 qrose                         = { module = "io.github.alexzhirkevich:qrose",                  version.ref = "qrose" }
+kamelImage                    = { module = "media.kamel:kamel-image",                          version.ref = "kamel" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }

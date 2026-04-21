@@ -19,7 +19,7 @@ dependencies {
 
 compose.desktop {
     application {
-        mainClass = "crocalert.desktop.MainKt"
+        mainClass = "crocalert.app.MainKt"
 
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)

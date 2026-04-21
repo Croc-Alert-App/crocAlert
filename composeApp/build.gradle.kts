@@ -64,7 +64,7 @@ kotlin {
             implementation(project.dependencies.platform(libs.koinBom))
             implementation(libs.koinCore)
             implementation(libs.koinCompose)
-            implementation("media.kamel:kamel-image:0.9.3")
+            implementation(libs.kamelImage)
         }
 
         commonTest.dependencies {
