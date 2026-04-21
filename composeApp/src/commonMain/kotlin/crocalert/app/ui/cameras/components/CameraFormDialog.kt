@@ -170,10 +170,10 @@ fun CameraFormDialog(
                 // ── Site ID ────────────────────────────────────────────────
                 OutlinedTextField(
                     value = siteId,
-                    onValueChange = { siteId = it },
-                    label = { Text("ID de sitio (ej: /site/CONCHAL-001)") },
+                    onValueChange = {},
+                    label = { Text("ID de sitio") },
                     singleLine = true,
-                    enabled = !isSaving,
+                    enabled = false,
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(8.dp),
                 )
