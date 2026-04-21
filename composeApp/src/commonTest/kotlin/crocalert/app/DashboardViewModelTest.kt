@@ -139,7 +139,7 @@ class DashboardViewModelTest {
         val v = vm(cameraRepo = errorRepo)
         advanceUntilIdle()
         val state = v.uiState.value as DashboardUiState.Error
-        assertEquals("Server unavailable", state.message)
+        assertEquals("El servidor no está disponible. Intenta más tarde.", state.message)
     }
 
     @Test
@@ -215,5 +215,55 @@ class DashboardViewModelTest {
         val before = v.uiState.value
         v.selectTab(DashboardTab.Alerts)
         assertEquals(before, v.uiState.value)
+    }
+
+    // ── toFriendlyError mapping ───────────────────────────────────────────────
+
+    private suspend fun kotlinx.coroutines.test.TestScope.friendlyError(raw: String): String {
+        val v = vm(cameraRepo = fakeCameraRepo(dashboardResult = ApiResult.Error(raw, 0)))
+        advanceUntilIdle()
+        return (v.uiState.value as? DashboardUiState.Error)?.message ?: ""
+    }
+
+    @Test
+    fun `timeout in raw maps to connectivity message`() = runTest {
+        val msg = friendlyError("connection timeout")
+        assertTrue(msg.contains("servidor", ignoreCase = true), "Expected 'servidor' in: $msg")
+    }
+
+    @Test
+    fun `timed out in raw maps to connectivity message`() = runTest {
+        val msg = friendlyError("request timed out")
+        assertTrue(msg.contains("servidor", ignoreCase = true), "Expected 'servidor' in: $msg")
+    }
+
+    @Test
+    fun `UnknownHost in raw maps to no-internet message`() = runTest {
+        val msg = friendlyError("UnknownHostException: api.example.com")
+        assertTrue(msg.contains("internet", ignoreCase = true), "Expected 'internet' in: $msg")
+    }
+
+    @Test
+    fun `401 in raw maps to session-expired message`() = runTest {
+        val msg = friendlyError("HTTP 401 Unauthorized")
+        assertTrue(msg.contains("Sesión", ignoreCase = true), "Expected session message in: $msg")
+    }
+
+    @Test
+    fun `403 in raw maps to permissions message`() = runTest {
+        val msg = friendlyError("HTTP 403 Forbidden")
+        assertTrue(msg.contains("permiso", ignoreCase = true), "Expected permissions message in: $msg")
+    }
+
+    @Test
+    fun `503 in raw maps to server-unavailable message`() = runTest {
+        val msg = friendlyError("HTTP 503 Service Unavailable")
+        assertTrue(msg.contains("servidor", ignoreCase = true), "Expected 'servidor' in: $msg")
+    }
+
+    @Test
+    fun `unknown raw string maps to generic fallback`() = runTest {
+        val msg = friendlyError("some unexpected error XYZ")
+        assertEquals("Error al cargar los datos. Intenta de nuevo.", msg)
     }
 }
