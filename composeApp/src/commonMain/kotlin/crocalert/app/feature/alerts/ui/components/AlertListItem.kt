@@ -142,16 +142,6 @@ fun AlertListItem(
                 Spacer(Modifier.height(6.dp))
 
                 // ── Meta info ─────────────────────────────────────────────
-                val cameraLabel = when {
-                    alert.sourceName.isNotBlank() -> alert.sourceName
-                    alert.cameraId.isNotBlank() -> alert.cameraId
-                    else -> "N/D"
-                }
-                Text(
-                    text = "Cámara: $cameraLabel",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
                 Text(
                     text = buildDateLine(alert.createdAt),
                     style = MaterialTheme.typography.bodySmall,

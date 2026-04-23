@@ -262,10 +262,28 @@ private fun AlertDetailContent(
 
                 Spacer(Modifier.height(12.dp))
 
-                // Row 2: Detectado full width
-                Column {
-                    SmallLabel("Detectado")
-                    ValueText(alert.createdAt.toDisplayDateTime())
+                // Row 2: Detectado + Cámara
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Column {
+                        SmallLabel("Detectado")
+                        ValueText(alert.createdAt.toDisplayDateTime())
+                    }
+                    val cameraLabel = alert.sourceName.ifBlank { alert.cameraId.ifBlank { "N/D" } }
+                    Column(horizontalAlignment = Alignment.End) {
+                        SmallLabel("Cámara")
+                        ValueText(cameraLabel)
+                    }
+                }
+
+                if (alert.title.isNotBlank()) {
+                    Spacer(Modifier.height(12.dp))
+                    Column {
+                        SmallLabel("Archivo")
+                        ValueText(alert.title)
+                    }
                 }
 
                 if (!alert.notes.isNullOrBlank()) {
