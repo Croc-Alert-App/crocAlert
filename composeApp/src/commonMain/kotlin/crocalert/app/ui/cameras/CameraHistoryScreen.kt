@@ -22,7 +22,6 @@ import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.ChevronLeft
 import androidx.compose.material.icons.outlined.ChevronRight
-import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -63,7 +62,6 @@ fun CameraHistoryScreen(
     cameraId: String,
     cameraName: String,
     onBack: () -> Unit,
-    onEditClick: () -> Unit = {},
     viewModel: CameraHistoryViewModel = viewModel(key = cameraId) {
         CameraHistoryViewModel(cameraId, cameraName)
     },
@@ -72,7 +70,7 @@ fun CameraHistoryScreen(
 
     Column(modifier = Modifier.fillMaxSize()) {
 
-        HistoryHeader(cameraName = uiState.cameraName, onBack = onBack, onEdit = onEditClick)
+        HistoryHeader(cameraName = uiState.cameraName, onBack = onBack)
 
         Column(
             modifier = Modifier
@@ -182,7 +180,7 @@ fun CameraHistoryScreen(
 }
 
 @Composable
-private fun HistoryHeader(cameraName: String, onBack: () -> Unit, onEdit: () -> Unit) {
+private fun HistoryHeader(cameraName: String, onBack: () -> Unit) {
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -201,9 +199,6 @@ private fun HistoryHeader(cameraName: String, onBack: () -> Unit, onEdit: () -> 
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-        }
-        IconButton(onClick = onEdit) {
-            Icon(Icons.Outlined.Edit, contentDescription = "Editar cámara", tint = CrocBlue)
         }
     }
 }

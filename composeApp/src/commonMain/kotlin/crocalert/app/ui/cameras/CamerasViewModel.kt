@@ -44,31 +44,11 @@ class CamerasViewModel(
     private val _selectedFilter = MutableStateFlow(CameraFilter.All)
     val selectedFilter: StateFlow<CameraFilter> = _selectedFilter.asStateFlow()
 
-    private val _visibilityFilter = MutableStateFlow(VisibilityFilter.Active)
-    val visibilityFilter: StateFlow<VisibilityFilter> = _visibilityFilter.asStateFlow()
-
-    private val _sortDescending = MutableStateFlow(false)
-    val sortDescending: StateFlow<Boolean> = _sortDescending.asStateFlow()
-
     private val _expandedCameraId = MutableStateFlow<String?>(null)
     val expandedCameraId: StateFlow<String?> = _expandedCameraId.asStateFlow()
 
     private val _historyCamera = MutableStateFlow<CameraUiItem?>(null)
     val historyCamera: StateFlow<CameraUiItem?> = _historyCamera.asStateFlow()
-
-    // ── Camera form state ──────────────────────────────────────────────────────
-    private val _showCameraForm = MutableStateFlow(false)
-    val showCameraForm: StateFlow<Boolean> = _showCameraForm.asStateFlow()
-
-    /** null → create mode; non-null → edit mode with pre-filled data */
-    private val _cameraToEdit = MutableStateFlow<Camera?>(null)
-    val cameraToEdit: StateFlow<Camera?> = _cameraToEdit.asStateFlow()
-
-    private val _isSaving = MutableStateFlow(false)
-    val isSaving: StateFlow<Boolean> = _isSaving.asStateFlow()
-
-    private val _saveError = MutableStateFlow<String?>(null)
-    val saveError: StateFlow<String?> = _saveError.asStateFlow()
 
     init {
         if (initialCameras.isEmpty()) {
@@ -87,100 +67,25 @@ class CamerasViewModel(
         viewModelScope.launch { reloadExpectedAndRebuild() }
     }
 
-    fun openEditCamera() {
-        val id = _historyCamera.value?.id ?: return
-        _cameraToEdit.value = rawCameras.firstOrNull { it.id == id }
-        _saveError.value = null
-        _showCameraForm.value = true
-    }
-
-    fun dismissCameraForm() {
-        _showCameraForm.value = false
-        _saveError.value = null
-    }
-
-    fun saveCamera(
-        name: String,
-        isActive: Boolean,
-        siteId: String?,
-        expectedImages: Int?,
-        createdAtMs: Long?,
-        installedAtMs: Long?,
-    ) {
-        val trimmedName = name.trim()
-        if (trimmedName.isBlank()) {
-            _saveError.value = "El nombre no puede estar vacío"
-            return
-        }
-        viewModelScope.launch {
-            _isSaving.value = true
-            _saveError.value = null
-            try {
-                val existing = _cameraToEdit.value ?: return@launch
-                val siteTrimmed = siteId?.trim()?.takeIf { it.isNotBlank() }
-                cameraRepository.updateCamera(
-                    existing.copy(
-                        name           = trimmedName,
-                        isActive       = isActive,
-                        siteId         = siteTrimmed,
-                        expectedImages = expectedImages,
-                        createdAt      = createdAtMs ?: existing.createdAt,
-                        installedAt    = installedAtMs ?: existing.installedAt,
-                    )
-                )
-                _showCameraForm.value = false
-            } catch (e: Exception) {
-                _saveError.value = e.message ?: "Error al guardar la cámara"
-            } finally {
-                _isSaving.value = false
-            }
-        }
-    }
-
     val statusCounts: StateFlow<Map<CameraStatus, Int>> = _cameras
-        .map { list -> CameraStatus.entries.associateWith { s -> list.count { it.isActive && it.status == s } } }
+        .map { list -> CameraStatus.entries.associateWith { s -> list.count { it.status == s } } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
 
     val filteredCameras: StateFlow<List<CameraUiItem>> = combine(
-        _cameras, _searchQuery, _selectedFilter, _visibilityFilter, _sortDescending
-    ) { cameras, query, filter, visibility, descending ->
+        _cameras, _searchQuery, _selectedFilter
+    ) { cameras, query, filter ->
         cameras
-            .filter { camera ->
-                when (visibility) {
-                    VisibilityFilter.Active  -> camera.isActive
-                    VisibilityFilter.Deleted -> !camera.isActive
-                    VisibilityFilter.All     -> true
-                }
-            }
-            .filter { camera ->
-                visibility == VisibilityFilter.Deleted || filter.matches(camera.status)
-            }
+            .filter { camera -> filter.matches(camera.status) }
             .filter { camera ->
                 query.isBlank() ||
                     camera.name.contains(query, ignoreCase = true) ||
                     camera.id.contains(query, ignoreCase = true)
             }
-            .let { list ->
-                if (descending) list.sortedByDescending { it.status.severity }
-                else list.sortedBy { it.status.severity }
-            }
+            .sortedBy { it.status.severity }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     fun onSearchChange(query: String) { _searchQuery.value = query }
     fun onFilterSelect(filter: CameraFilter) { _selectedFilter.value = filter }
-    fun onVisibilityFilterSelect(filter: VisibilityFilter) { _visibilityFilter.value = filter }
-    fun toggleSort() { _sortDescending.value = !_sortDescending.value }
-
-    fun activateCamera(cameraId: String) {
-        viewModelScope.launch {
-            try {
-                val camera = rawCameras.firstOrNull { it.id == cameraId } ?: return@launch
-                cameraRepository.updateCamera(camera.copy(isActive = true))
-            } catch (e: Exception) {
-                _error.value = e.message ?: "Error al activar la cámara"
-            }
-        }
-    }
 
     fun clearSearch() {
         _searchQuery.value = ""
@@ -188,16 +93,6 @@ class CamerasViewModel(
     }
 
     fun retry() { viewModelScope.launch { loadData() } }
-
-    fun deleteCamera(cameraId: String) {
-        viewModelScope.launch {
-            try {
-                cameraRepository.deleteCamera(cameraId)
-            } catch (e: Exception) {
-                _error.value = e.message ?: "Error al eliminar la cámara"
-            }
-        }
-    }
 
     private fun rebuildCameras() {
         _cameras.value = rawCameras.map { camera ->

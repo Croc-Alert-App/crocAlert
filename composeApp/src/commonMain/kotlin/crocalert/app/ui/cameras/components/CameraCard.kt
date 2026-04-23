@@ -51,7 +51,6 @@ fun CameraCard(
     expanded: Boolean,
     onToggle: () -> Unit,
     onHistoryClick: () -> Unit,
-    onDeleteClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Card(
@@ -176,24 +175,12 @@ fun CameraCard(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
 
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                        ) {
-                            TextButton(onClick = onHistoryClick) {
-                                Text(
-                                    text = "Historial",
-                                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
-                                    color = CrocBlue,
-                                )
-                            }
-                            TextButton(onClick = onDeleteClick) {
-                                Text(
-                                    text = "Desactivar",
-                                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
-                                    color = MaterialTheme.colorScheme.error,
-                                )
-                            }
+                        TextButton(onClick = onHistoryClick) {
+                            Text(
+                                text = "Historial",
+                                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                                color = CrocBlue,
+                            )
                         }
                     }
                 }
