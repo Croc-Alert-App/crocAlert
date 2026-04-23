@@ -8,11 +8,15 @@ data class DashboardData(
     val networkHealthPct: Float,
     val activeAlertas: Int,
     val activePreAlertas: Int,
-    val alertWindowDays: Int,
     val captureRate: String,
     val captureRatePct: Float,
     val recentActivity: List<Alert>
 )
+
+sealed class DashboardFilter {
+    data class LastDays(val days: Int) : DashboardFilter()
+    data class Custom(val startMs: Long, val endMs: Long) : DashboardFilter()
+}
 
 // Navigation and sync state — defined here so ViewModels never import from UI component files.
 enum class DashboardTab { Home, Cameras, Alerts, Profile }

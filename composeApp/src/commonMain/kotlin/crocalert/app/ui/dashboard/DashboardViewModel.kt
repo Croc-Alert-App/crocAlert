@@ -7,8 +7,9 @@ import crocalert.app.domain.repository.CameraRepository
 import crocalert.app.model.AlertStatus
 import crocalert.app.shared.AppModule
 import crocalert.app.shared.network.ApiResult
-import crocalert.app.shared.sync.SyncPreferencesProvider
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -16,16 +17,16 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.atStartOfDayIn
-import kotlinx.datetime.minus
+import kotlinx.datetime.plus
 import kotlinx.datetime.toLocalDateTime
 import kotlinx.datetime.todayIn
 
 class DashboardViewModel(
     private val alertRepository: AlertRepository = AppModule.provideAlertRepository(),
     private val cameraRepository: CameraRepository = AppModule.provideCameraRepository(),
-    private val syncPrefsProvider: SyncPreferencesProvider = AppModule.provideSyncPreferencesProvider(),
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<DashboardUiState>(DashboardUiState.Loading)
@@ -40,6 +41,12 @@ class DashboardViewModel(
     private val _selectedTab = MutableStateFlow(DashboardTab.Home)
     val selectedTab: StateFlow<DashboardTab> = _selectedTab.asStateFlow()
 
+    private val _activeFilter = MutableStateFlow<DashboardFilter>(DashboardFilter.LastDays(7))
+    val activeFilter: StateFlow<DashboardFilter> = _activeFilter.asStateFlow()
+
+    private val _isRefreshing = MutableStateFlow(false)
+    val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
+
     private var loadJob: Job? = null
 
     init {
@@ -50,11 +57,16 @@ class DashboardViewModel(
         _selectedTab.value = tab
     }
 
-    fun setAlertWindowDays(days: Int) {
-        viewModelScope.launch {
-            syncPrefsProvider.setAlertWindowDays(days)
-            loadData()
-        }
+    fun setFilter(filter: DashboardFilter) {
+        _activeFilter.value = filter
+        // Only show the overlay when there is already content visible — initial load uses the
+        // full DashboardUiState.Loading screen instead.
+        if (_uiState.value is DashboardUiState.Success) _isRefreshing.value = true
+        loadData()
+    }
+
+    fun setCustomRange(startMs: Long, endMs: Long) {
+        setFilter(DashboardFilter.Custom(startMs, endMs))
     }
 
     fun retry() {
@@ -72,53 +84,66 @@ class DashboardViewModel(
         loadJob = viewModelScope.launch {
             val tz = TimeZone.currentSystemDefault()
             val today = Clock.System.todayIn(tz)
-            val todayStr = today.toString()
 
-            val todayDashboard = cameraRepository.getMonitoringDashboard(todayStr)
-
-            val activeCameras: Int
-            val totalCameras: Int
-            val networkHealthPct: Float
-            val captureRatePct: Float
-            val captureRateLabel: String
-
-            when (todayDashboard) {
-                is ApiResult.Success -> {
-                    val d = todayDashboard.data
-                    activeCameras = d.activeCameras
-                    totalCameras = d.totalCameras
-                    // Per-camera average capture rate — each camera contributes equally
-                    // regardless of expected count, so a Precaución camera at 50% adds 50%,
-                    // not 0% as the server's RISK bucket would imply.
-                    val activeCams = d.cameras.filter { it.isActive }
-                    networkHealthPct = if (activeCams.isNotEmpty())
-                        (activeCams.sumOf { it.captureRate } / activeCams.size)
-                            .toFloat().coerceIn(0f, 100f)
-                    else 0f
-                    captureRatePct = d.globalCaptureRate.toFloat()
-                    captureRateLabel = "${d.receivedImagesTotal}/${d.expectedImagesTotal}"
+            // Build the list of YYYY-MM-DD date strings and alert window bounds from the active filter.
+            val filter = _activeFilter.value
+            val (dates, windowStartMs, windowEndMs) = when (filter) {
+                is DashboardFilter.LastDays -> {
+                    val startDay = today.plus(-(filter.days - 1), DateTimeUnit.DAY)
+                    val dayList = (0 until filter.days).map { offset ->
+                        startDay.plus(offset, DateTimeUnit.DAY).toString()
+                    }
+                    val startMs = startDay.atStartOfDayIn(tz).toEpochMilliseconds()
+                    Triple(dayList, startMs, Clock.System.now().toEpochMilliseconds())
                 }
-                is ApiResult.Error -> {
-                    _syncStatus.value = SyncStatus.Error
-                    _uiState.value = DashboardUiState.Error(toFriendlyError(todayDashboard.message))
-                    return@launch
+                is DashboardFilter.Custom -> {
+                    val startDay = Instant.fromEpochMilliseconds(filter.startMs).toLocalDateTime(tz).date
+                    val endDay = Instant.fromEpochMilliseconds(filter.endMs).toLocalDateTime(tz).date
+                    val dayList = buildList {
+                        var cur = startDay
+                        while (cur <= endDay) {
+                            add(cur.toString())
+                            cur = cur.plus(1, DateTimeUnit.DAY)
+                        }
+                    }
+                    // Extend endMs to cover the full end day.
+                    Triple(dayList, filter.startMs, filter.endMs + 86_400_000L - 1)
                 }
             }
 
-            val prefs = syncPrefsProvider.preferences.first()
-            val windowDays = prefs.alertWindowDays
+            // Fetch all days in parallel and aggregate.
+            val dashboardResults = dates
+                .map { date -> async { cameraRepository.getMonitoringDashboard(date) } }
+                .awaitAll()
+
+            val successDays = dashboardResults.mapNotNull { (it as? ApiResult.Success)?.data }
+
+            if (successDays.isEmpty()) {
+                val errorMsg = dashboardResults.filterIsInstance<ApiResult.Error>().firstOrNull()?.message
+                _syncStatus.value = SyncStatus.Error
+                _isRefreshing.value = false
+                _uiState.value = DashboardUiState.Error(toFriendlyError(errorMsg))
+                return@launch
+            }
+
+            val totalCameras = successDays.maxOf { it.totalCameras }
+            val activeCameras = successDays.map { it.activeCameras }.average()
+                .let { if (it.isNaN()) 0 else it.toInt() }
+            val networkHealthPct = successDays.map { day ->
+                val active = day.cameras.filter { it.isActive }
+                if (active.isNotEmpty()) active.sumOf { it.captureRate } / active.size else 0.0
+            }.average().let { if (it.isNaN()) 0f else it.toFloat().coerceIn(0f, 100f) }
+            val totalReceived = successDays.sumOf { it.receivedImagesTotal }
+            val totalExpected = successDays.sumOf { it.expectedImagesTotal }
+            val captureRatePct = if (totalExpected > 0)
+                (totalReceived.toFloat() / totalExpected * 100f).coerceIn(0f, 100f)
+            else 0f
+            val captureRateLabel = "$totalReceived/$totalExpected"
 
             val allAlerts = alertRepository.observeAlerts().first()
 
-            val windowStartMs = Clock.System.now()
-                .toLocalDateTime(tz)
-                .date
-                .minus(windowDays - 1, DateTimeUnit.DAY)
-                .atStartOfDayIn(tz)
-                .toEpochMilliseconds()
-
             val windowAlerts = allAlerts
-                .filter { it.createdAt >= windowStartMs }
+                .filter { it.createdAt in windowStartMs..windowEndMs }
                 .sortedByDescending { it.createdAt }
 
             val activeAlertas = windowAlerts.count {
@@ -134,13 +159,13 @@ class DashboardViewModel(
                 networkHealthPct = networkHealthPct,
                 activeAlertas = activeAlertas,
                 activePreAlertas = activePreAlertas,
-                alertWindowDays = windowDays,
                 captureRate = captureRateLabel,
                 captureRatePct = captureRatePct,
                 recentActivity = windowAlerts,
             )
 
             _syncStatus.value = SyncStatus.Synced
+            _isRefreshing.value = false
             val now = Clock.System.now().toLocalDateTime(tz)
             _lastSynced.value = "${now.hour.toString().padStart(2, '0')}:${now.minute.toString().padStart(2, '0')}"
             _uiState.value = DashboardUiState.Success(data)

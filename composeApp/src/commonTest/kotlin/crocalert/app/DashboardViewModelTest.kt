@@ -8,7 +8,6 @@ import crocalert.app.shared.data.dto.CameraMonitoringDashboardDto
 import crocalert.app.shared.data.dto.CaptureDto
 import crocalert.app.shared.data.dto.GlobalDailyCaptureRateDto
 import crocalert.app.shared.network.ApiResult
-import crocalert.app.shared.sync.InMemorySyncPreferencesProvider
 import crocalert.app.ui.dashboard.DashboardTab
 import crocalert.app.ui.dashboard.DashboardUiState
 import crocalert.app.ui.dashboard.DashboardViewModel
@@ -74,7 +73,6 @@ class DashboardViewModelTest {
     ) = DashboardViewModel(
         alertRepository = alertRepo,
         cameraRepository = cameraRepo,
-        syncPrefsProvider = InMemorySyncPreferencesProvider(),
     )
 
     @BeforeTest
@@ -162,7 +160,8 @@ class DashboardViewModelTest {
             override suspend fun getDailyStats(cameraId: String, date: String): ApiResult<CameraDailyStatsDto> = ApiResult.Error("n/a", 501)
             override suspend fun getDailyStatsForAll(date: String): ApiResult<List<CameraDailyStatsDto>> = ApiResult.Success(emptyList())
             override suspend fun getMonitoringDashboard(date: String): ApiResult<CameraMonitoringDashboardDto> {
-                // First 7-call batch (trend) + 1 today call → all fail; retry batch succeeds
+                // Initial load makes 7 calls (LastDays(7) default) — all fail.
+                // First call of retry also fails; remaining 6 succeed → Success via partial aggregation.
                 return if (++callCount <= 8) ApiResult.Error("first fail", 503)
                 else ApiResult.Success(successDashboard)
             }

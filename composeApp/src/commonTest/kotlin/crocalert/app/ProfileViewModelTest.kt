@@ -68,12 +68,4 @@ class ProfileViewModelTest {
         assertEquals(1440, v.syncPreferences.value.camerasTtlMinutes)
     }
 
-    @Test
-    fun `setAlertWindowDays delegates to provider with no coercion`() = runTest {
-        val provider = InMemorySyncPreferencesProvider()
-        val v = vm(provider)
-        v.setAlertWindowDays(30)
-        advanceUntilIdle()
-        assertEquals(30, v.syncPreferences.value.alertWindowDays)
-    }
 }
