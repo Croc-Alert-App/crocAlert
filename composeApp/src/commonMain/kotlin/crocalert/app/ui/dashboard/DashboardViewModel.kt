@@ -10,6 +10,7 @@ import crocalert.app.shared.network.ApiResult
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.yield
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -82,6 +83,7 @@ class DashboardViewModel(
     private fun loadData() {
         loadJob?.cancel()
         loadJob = viewModelScope.launch {
+            yield()
             val tz = TimeZone.currentSystemDefault()
             val today = Clock.System.todayIn(tz)
 
