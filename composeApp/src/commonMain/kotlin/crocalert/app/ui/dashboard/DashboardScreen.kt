@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -14,44 +13,32 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.DateRange
 import androidx.compose.material.icons.outlined.WifiOff
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import crocalert.app.feature.alerts.presentation.DateRange
 import crocalert.app.feature.alerts.ui.AlertListScreen
-import crocalert.app.feature.alerts.ui.components.AlertDateRangePickerDialog
 import crocalert.app.feature.alerts.ui.components.AlertListItem
 import crocalert.app.shared.UserSession
 import crocalert.app.theme.CrocAmber
 import crocalert.app.theme.CrocBlue
-import crocalert.app.theme.CrocWhite
 import crocalert.app.ui.cameras.CamerasScreen
 import crocalert.app.ui.components.BottomNavBar
 import crocalert.app.ui.components.StatCard
@@ -73,8 +60,6 @@ fun DashboardScreen(
     val lastSynced by viewModel.lastSynced.collectAsState()
     val activeFilter by viewModel.activeFilter.collectAsState()
     val isRefreshing by viewModel.isRefreshing.collectAsState()
-
-    var showDateRangePicker by remember { mutableStateOf(false) }
 
     val visibleTabs = if (UserSession.isAdmin) {
         DashboardTab.entries
@@ -109,7 +94,6 @@ fun DashboardScreen(
                             activeFilter = activeFilter,
                             onAlertClick = onAlertClick,
                             onFilterSelected = viewModel::setFilter,
-                            onCustomRangeOpen = { showDateRangePicker = true },
                         )
                         if (isRefreshing) {
                             Box(
@@ -130,18 +114,6 @@ fun DashboardScreen(
         }
     }
 
-    if (showDateRangePicker) {
-        AlertDateRangePickerDialog(
-            initialRange = (activeFilter as? DashboardFilter.Custom)?.let {
-                DateRange(it.startMs, it.endMs)
-            },
-            onRangeSelected = { start, end ->
-                viewModel.setCustomRange(start, end)
-                showDateRangePicker = false
-            },
-            onDismiss = { showDateRangePicker = false },
-        )
-    }
 }
 
 // ── State renderers ───────────────────────────────────────────────────────────
@@ -203,10 +175,9 @@ private fun DashboardContent(
     activeFilter: DashboardFilter,
     onAlertClick: (String) -> Unit,
     onFilterSelected: (DashboardFilter) -> Unit,
-    onCustomRangeOpen: () -> Unit,
 ) {
     LazyColumn(modifier = Modifier.fillMaxSize()) {
-        item { HeaderSection(activeFilter, onFilterSelected, onCustomRangeOpen) }
+        item { HeaderSection(activeFilter, onFilterSelected) }
         item { StatsGridSection(data, activeFilter) }
         item { RecentActivitySection(data, onAlertClick = onAlertClick) }
         item { Spacer(modifier = Modifier.height(16.dp)) }
@@ -219,7 +190,6 @@ private fun DashboardContent(
 private fun HeaderSection(
     activeFilter: DashboardFilter,
     onFilterSelected: (DashboardFilter) -> Unit,
-    onCustomRangeOpen: () -> Unit,
 ) {
     Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp)) {
         Text(
@@ -235,7 +205,6 @@ private fun HeaderSection(
         )
         if (UserSession.isAdmin) {
             Spacer(modifier = Modifier.height(12.dp))
-            // All filters in one scrollable row — Hoy / 7d / 30d / Personalizado
             Row(
                 modifier = Modifier.horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -251,83 +220,6 @@ private fun HeaderSection(
                         ),
                     )
                 }
-                FilterChip(
-                    selected = activeFilter is DashboardFilter.Custom,
-                    onClick = onCustomRangeOpen,
-                    label = { Text("Personalizado", style = MaterialTheme.typography.labelSmall) },
-                    leadingIcon = {
-                        Icon(
-                            imageVector = Icons.Outlined.DateRange,
-                            contentDescription = null,
-                            modifier = Modifier.size(16.dp),
-                        )
-                    },
-                    colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = CrocBlue,
-                        selectedLabelColor = Color.White,
-                        selectedLeadingIconColor = Color.White,
-                    ),
-                )
-            }
-            // Active range detail bar — only shown when a custom range is selected
-            if (activeFilter is DashboardFilter.Custom) {
-                Spacer(modifier = Modifier.height(8.dp))
-                DashboardCustomRangeBar(
-                    filter = activeFilter,
-                    onOpen = onCustomRangeOpen,
-                    onClear = { onFilterSelected(DashboardFilter.LastDays(7)) },
-                )
-            }
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun DashboardCustomRangeBar(
-    filter: DashboardFilter.Custom,
-    onOpen: () -> Unit,
-    onClear: () -> Unit,
-) {
-    Surface(
-        onClick = onOpen,
-        shape = RoundedCornerShape(8.dp),
-        color = CrocBlue,
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 6.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Icon(
-                imageVector = Icons.Outlined.DateRange,
-                contentDescription = null,
-                tint = CrocWhite,
-                modifier = Modifier.size(16.dp),
-            )
-            Spacer(Modifier.width(6.dp))
-            Text(
-                text = "${formatDateMs(filter.startMs)} – ${formatDateMs(filter.endMs)}",
-                color = CrocWhite,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.weight(1f),
-            )
-            TextButton(
-                onClick = onOpen,
-                colors = ButtonDefaults.textButtonColors(contentColor = CrocWhite),
-                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp),
-            ) {
-                Text("Editar", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
-            }
-            TextButton(
-                onClick = onClear,
-                colors = ButtonDefaults.textButtonColors(contentColor = CrocWhite),
-                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp),
-            ) {
-                Text("× Limpiar", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
             }
         }
     }
