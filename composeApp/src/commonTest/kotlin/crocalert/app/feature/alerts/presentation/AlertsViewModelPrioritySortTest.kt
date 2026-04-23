@@ -77,7 +77,6 @@ class AlertsViewModelPrioritySortTest {
         )
         assertEquals("critical-older", state.alerts.last().id)
 
-        vm.clear()
         scope.cancel()
     }
 
@@ -101,7 +100,6 @@ class AlertsViewModelPrioritySortTest {
         )
         assertEquals("critical-newest", state.alerts.last().id)
 
-        vm.clear()
         scope.cancel()
     }
 
@@ -119,7 +117,6 @@ class AlertsViewModelPrioritySortTest {
         val state = vm.uiState.value as AlertsUiState.Success
         assertEquals(2, state.alerts.size)
 
-        vm.clear()
         scope.cancel()
     }
 }

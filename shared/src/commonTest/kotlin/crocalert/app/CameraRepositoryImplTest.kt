@@ -247,4 +247,10 @@ private class FakeCameraRemoteDataSource(
 
     override suspend fun getDailyStatsForAll(date: String): ApiResult<List<CameraDailyStatsDto>> =
         ApiResult.Success(emptyList())
+
+    override suspend fun getMonitoringDashboard(date: String): ApiResult<crocalert.app.shared.data.dto.CameraMonitoringDashboardDto> =
+        ApiResult.Error("not implemented", 501)
+
+    override suspend fun getGlobalCaptureRate(date: String): ApiResult<crocalert.app.shared.data.dto.GlobalDailyCaptureRateDto> =
+        ApiResult.Error("not implemented", 501)
 }

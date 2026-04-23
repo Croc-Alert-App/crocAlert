@@ -14,8 +14,8 @@ import io.ktor.server.routing.put
 import io.ktor.server.routing.route
 import java.time.LocalDate
 import java.time.format.DateTimeParseException
+import kotlinx.serialization.Serializable
 
-// P3: strict calendar validation — rejects impossible dates like 2026-13-45 or 2026-02-30
 private fun String.isValidDate(): Boolean = try {
     LocalDate.parse(this)
     true
@@ -23,21 +23,14 @@ private fun String.isValidDate(): Boolean = try {
     false
 }
 
-// P4: blank or whitespace cameraId produces confusing 404s — reject early
 private fun String.isValidId(): Boolean = isNotBlank()
 
-// P2: uniform structured error response for service exceptions
+@Serializable
 private data class ErrorResponse(val error: String)
 
 fun Route.cameraRoutes(service: CameraServicePort) {
 
     route("/cameras") {
-
-        // ── LITERAL-PATH ROUTES FIRST (P5) ────────────────────────────────────────
-        // Ktor prefers static segments over parameterised ones, but placing these
-        // first makes the intent explicit and avoids "dashboard" being shadowed by
-        // a future {id} reorder. Camera IDs that equal these words are unreachable
-        // via GET /cameras/{id}; avoid creating cameras with those names.
 
         get("daily-stats/{date}") {
             val date = call.parameters["date"]
