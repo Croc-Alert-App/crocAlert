@@ -1,5 +1,7 @@
 package crocalert.app.ui.dashboard
 
+import crocalert.app.model.Alert
+
 data class DashboardData(
     val activeCameras: Int,
     val totalCameras: Int,
@@ -9,16 +11,7 @@ data class DashboardData(
     val alertWindowDays: Int,
     val captureRate: String,
     val captureRatePct: Float,
-    val recentActivity: List<ActivityEvent>
-)
-
-data class ActivityEvent(
-    val title: String,
-    val timeAgo: String,
-    val severity: String,
-    val isNew: Boolean = false,
-    val alertId: String? = null,
-    val folder: String? = null,
+    val recentActivity: List<Alert>
 )
 
 // Navigation and sync state — defined here so ViewModels never import from UI component files.

@@ -32,6 +32,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import crocalert.app.feature.alerts.ui.AlertListScreen
+import crocalert.app.feature.alerts.ui.components.AlertListItem
 import crocalert.app.shared.UserSession
 import crocalert.app.theme.CrocAmber
 import crocalert.app.theme.CrocBlue
@@ -254,10 +255,10 @@ private fun RecentActivitySection(data: DashboardData, onAlertClick: (String) ->
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         } else {
-            data.recentActivity.forEachIndexed { index, event ->
-                ActivityEventCard(
-                    event = event,
-                    onClick = event.alertId?.let { id -> { onAlertClick(id) } },
+            data.recentActivity.forEachIndexed { index, alert ->
+                AlertListItem(
+                    alert = alert,
+                    onClick = { onAlertClick(alert.id) },
                 )
                 if (index < data.recentActivity.lastIndex) Spacer(modifier = Modifier.height(8.dp))
             }

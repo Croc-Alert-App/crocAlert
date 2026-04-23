@@ -128,18 +128,6 @@ class DashboardViewModel(
                 it.status == AlertStatus.OPEN && it.folder == "pre-alertas"
             }
 
-            val recentActivity = windowAlerts.map { alert ->
-                ActivityEvent(
-                    title = alert.title,
-                    timeAgo = formatRelativeTime(alert.createdAt),
-                    severity = alert.priority.name.lowercase()
-                        .replaceFirstChar { it.uppercase() },
-                    isNew = !alert.isRead,
-                    alertId = alert.id,
-                    folder = alert.folder,
-                )
-            }
-
             val data = DashboardData(
                 activeCameras = activeCameras,
                 totalCameras = totalCameras,
@@ -149,23 +137,13 @@ class DashboardViewModel(
                 alertWindowDays = windowDays,
                 captureRate = captureRateLabel,
                 captureRatePct = captureRatePct,
-                recentActivity = recentActivity,
+                recentActivity = windowAlerts,
             )
 
             _syncStatus.value = SyncStatus.Synced
             val now = Clock.System.now().toLocalDateTime(tz)
             _lastSynced.value = "${now.hour.toString().padStart(2, '0')}:${now.minute.toString().padStart(2, '0')}"
             _uiState.value = DashboardUiState.Success(data)
-        }
-    }
-
-    private fun formatRelativeTime(epochMillis: Long): String {
-        val diffMs = Clock.System.now().toEpochMilliseconds() - epochMillis
-        return when {
-            diffMs < 60_000L -> "Ahora mismo"
-            diffMs < 3_600_000L -> "Hace ${diffMs / 60_000L} min"
-            diffMs < 86_400_000L -> "Hace ${diffMs / 3_600_000L} h"
-            else -> "Hace ${diffMs / 86_400_000L} días"
         }
     }
 
