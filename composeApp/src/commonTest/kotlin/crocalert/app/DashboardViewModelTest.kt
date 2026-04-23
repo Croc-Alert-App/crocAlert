@@ -12,6 +12,7 @@ import crocalert.app.ui.dashboard.DashboardTab
 import crocalert.app.ui.dashboard.DashboardUiState
 import crocalert.app.ui.dashboard.DashboardViewModel
 import crocalert.app.ui.dashboard.SyncStatus
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -184,20 +185,35 @@ class DashboardViewModelTest {
 
     @Test
     fun `retry sets syncStatus to Syncing before fetch completes`() = runTest {
-        val observed = mutableListOf<SyncStatus>()
-        val v = vm()
-        val collectJob = launch { v.syncStatus.collect { observed.add(it) } }
+        var callCount = 0
+        val gate = CompletableDeferred<Unit>()
+        val repo = object : CameraRepository {
+            override fun observeCameras(siteId: String?): Flow<List<Camera>> = flowOf(emptyList())
+            override fun observeCamera(cameraId: String): Flow<Camera?> = flowOf(null)
+            override suspend fun getCapturesByCamera(cameraId: String): ApiResult<List<CaptureDto>> = ApiResult.Success(emptyList())
+            override suspend fun getDailyStats(cameraId: String, date: String): ApiResult<CameraDailyStatsDto> = ApiResult.Error("n/a", 501)
+            override suspend fun getDailyStatsForAll(date: String): ApiResult<List<CameraDailyStatsDto>> = ApiResult.Success(emptyList())
+            override suspend fun getMonitoringDashboard(date: String): ApiResult<CameraMonitoringDashboardDto> {
+                if (++callCount > 7) gate.await()
+                return ApiResult.Success(successDashboard)
+            }
+            override suspend fun getGlobalCaptureRate(date: String): ApiResult<GlobalDailyCaptureRateDto> = ApiResult.Error("n/a", 501)
+            override suspend fun createCamera(camera: Camera): String = ""
+            override suspend fun updateCamera(camera: Camera) {}
+            override suspend fun deleteCamera(cameraId: String) {}
+            override suspend fun refresh() {}
+        }
+        val v = vm(cameraRepo = repo)
         advanceUntilIdle()
-        observed.clear() // discard initial Syncing→Synced from init
+        assertIs<DashboardUiState.Success>(v.uiState.value)
 
         v.retry()
-        advanceUntilIdle()
+        // loadData coroutines are suspended at gate.await() — syncStatus must still be Syncing
+        assertEquals(SyncStatus.Syncing, v.syncStatus.value)
 
-        assertTrue(
-            SyncStatus.Syncing in observed,
-            "Expected SyncStatus.Syncing to be emitted during retry, got: $observed"
-        )
-        collectJob.cancel()
+        gate.complete(Unit)
+        advanceUntilIdle()
+        assertEquals(SyncStatus.Synced, v.syncStatus.value)
     }
 
     // ── selectTab ─────────────────────────────────────────────────────────────
