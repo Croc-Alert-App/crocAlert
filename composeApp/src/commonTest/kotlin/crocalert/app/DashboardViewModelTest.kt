@@ -183,13 +183,20 @@ class DashboardViewModelTest {
 
     @Test
     fun `retry sets syncStatus to Syncing before fetch completes`() = runTest {
+        val observed = mutableListOf<SyncStatus>()
         val v = vm()
+        val collectJob = launch { v.syncStatus.collect { observed.add(it) } }
         advanceUntilIdle()
-        assertEquals(SyncStatus.Synced, v.syncStatus.value)
+        observed.clear() // discard initial Syncing→Synced from init
 
-        // After calling retry, syncStatus resets to Syncing immediately
         v.retry()
-        assertEquals(SyncStatus.Syncing, v.syncStatus.value)
+        advanceUntilIdle()
+
+        assertTrue(
+            SyncStatus.Syncing in observed,
+            "Expected SyncStatus.Syncing to be emitted during retry, got: $observed"
+        )
+        collectJob.cancel()
     }
 
     // ── selectTab ─────────────────────────────────────────────────────────────

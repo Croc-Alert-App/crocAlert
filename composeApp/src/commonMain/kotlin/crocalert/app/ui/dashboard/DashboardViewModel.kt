@@ -119,10 +119,10 @@ class DashboardViewModel(
             val successDays = dashboardResults.mapNotNull { (it as? ApiResult.Success)?.data }
 
             if (successDays.isEmpty()) {
-                val errorMsg = dashboardResults.filterIsInstance<ApiResult.Error>().firstOrNull()?.message
+                val firstError = dashboardResults.filterIsInstance<ApiResult.Error>().firstOrNull()
                 _syncStatus.value = SyncStatus.Error
                 _isRefreshing.value = false
-                _uiState.value = DashboardUiState.Error(toFriendlyError(errorMsg))
+                _uiState.value = DashboardUiState.Error(toFriendlyError(firstError?.message, firstError?.code))
                 return@launch
             }
 
@@ -172,7 +172,7 @@ class DashboardViewModel(
         }
     }
 
-    private fun toFriendlyError(raw: String?): String = when {
+    private fun toFriendlyError(raw: String?, code: Int? = null): String = when {
         raw == null -> "Error desconocido. Intenta de nuevo."
         raw.contains("timeout", ignoreCase = true) ||
             raw.contains("timed out", ignoreCase = true) ->
@@ -185,7 +185,8 @@ class DashboardViewModel(
             "Sesión expirada. Cierra sesión y vuelve a entrar."
         raw.contains("403") || raw.contains("Forbidden", ignoreCase = true) ->
             "No tienes permiso para ver estos datos."
-        raw.contains("500") || raw.contains("502") || raw.contains("503") ->
+        raw.contains("500") || raw.contains("502") || raw.contains("503") ||
+            code in listOf(500, 502, 503) ->
             "El servidor no está disponible. Intenta más tarde."
         else -> "Error al cargar los datos. Intenta de nuevo."
     }
