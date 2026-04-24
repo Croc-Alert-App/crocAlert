@@ -106,8 +106,13 @@ class DashboardViewModel(
                             cur = cur.plus(1, DateTimeUnit.DAY)
                         }
                     }
-                    // Extend endMs to cover the full end day.
-                    Triple(dayList, filter.startMs, filter.endMs + 86_400_000L - 1)
+                    // Normalise both bounds to local-day boundaries so the alert window
+                    // matches what the user selected regardless of their UTC offset.
+                    // DateRangePicker returns UTC midnight; using it raw shifts the window
+                    // by the device's timezone offset (e.g. -6 h for Mexico City).
+                    val startMsLocal = startDay.atStartOfDayIn(tz).toEpochMilliseconds()
+                    val endMsLocal = endDay.plus(1, DateTimeUnit.DAY).atStartOfDayIn(tz).toEpochMilliseconds() - 1
+                    Triple(dayList, startMsLocal, endMsLocal)
                 }
             }
 
