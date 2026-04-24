@@ -3,7 +3,9 @@ package crocalert.app
 import crocalert.app.domain.repository.CameraRepository
 import crocalert.app.model.Camera
 import crocalert.app.shared.data.dto.CameraDailyStatsDto
+import crocalert.app.shared.data.dto.CameraMonitoringDashboardDto
 import crocalert.app.shared.data.dto.CaptureDto
+import crocalert.app.shared.data.dto.GlobalDailyCaptureRateDto
 import crocalert.app.shared.network.ApiResult
 import crocalert.app.ui.cameras.CameraFilter
 import crocalert.app.ui.cameras.CameraStatus
@@ -40,6 +42,8 @@ class CamerasViewModelTest {
         override suspend fun getCapturesByCamera(cameraId: String): ApiResult<List<CaptureDto>> = ApiResult.Success(emptyList())
         override suspend fun getDailyStats(cameraId: String, date: String): ApiResult<CameraDailyStatsDto> = ApiResult.Error("not implemented", 501)
         override suspend fun getDailyStatsForAll(date: String): ApiResult<List<CameraDailyStatsDto>> = ApiResult.Success(emptyList())
+        override suspend fun getMonitoringDashboard(date: String): ApiResult<CameraMonitoringDashboardDto> = ApiResult.Error("not implemented", 501)
+        override suspend fun getGlobalCaptureRate(date: String): ApiResult<GlobalDailyCaptureRateDto> = ApiResult.Error("not implemented", 501)
         override suspend fun createCamera(camera: Camera): String = ""
         override suspend fun updateCamera(camera: Camera) {}
         override suspend fun deleteCamera(cameraId: String) {}
@@ -294,6 +298,86 @@ class CamerasViewModelTest {
         assertEquals(1, counts[CameraStatus.Attention])
         filterJob.cancel()
         countsJob.cancel()
+    }
+
+    // ── Background stats loading ──────────────────────────────────────────────
+
+    @Test
+    fun `stats are fetched in background after cameras are rendered`() = runTest {
+        var statsCalled = false
+        val repo = object : CameraRepository {
+            override fun observeCameras(siteId: String?): Flow<List<Camera>> = flowOf(emptyList())
+            override fun observeCamera(cameraId: String): Flow<Camera?> = flowOf(null)
+            override suspend fun getCapturesByCamera(cameraId: String): ApiResult<List<CaptureDto>> = ApiResult.Success(emptyList())
+            override suspend fun getDailyStats(cameraId: String, date: String): ApiResult<CameraDailyStatsDto> = ApiResult.Error("n/a", 501)
+            override suspend fun getDailyStatsForAll(date: String): ApiResult<List<CameraDailyStatsDto>> {
+                statsCalled = true
+                return ApiResult.Success(emptyList())
+            }
+            override suspend fun getMonitoringDashboard(date: String): ApiResult<CameraMonitoringDashboardDto> = ApiResult.Error("n/a", 501)
+            override suspend fun getGlobalCaptureRate(date: String): ApiResult<GlobalDailyCaptureRateDto> = ApiResult.Error("n/a", 501)
+            override suspend fun createCamera(camera: Camera): String = ""
+            override suspend fun updateCamera(camera: Camera) {}
+            override suspend fun deleteCamera(cameraId: String) {}
+            override suspend fun refresh() {}
+        }
+        // No initialCameras → loadData() runs and triggers getDailyStatsForAll
+        val v = CamerasViewModel(cameraRepository = repo)
+        val job = launch { v.filteredCameras.collect { } }
+        advanceUntilIdle()
+        assertFalse(v.isLoading.value)
+        assertTrue(statsCalled)
+        job.cancel()
+    }
+
+    @Test
+    fun `stats error sets error message`() = runTest {
+        val repo = object : CameraRepository {
+            override fun observeCameras(siteId: String?): Flow<List<Camera>> = flowOf(emptyList())
+            override fun observeCamera(cameraId: String): Flow<Camera?> = flowOf(null)
+            override suspend fun getCapturesByCamera(cameraId: String): ApiResult<List<CaptureDto>> = ApiResult.Success(emptyList())
+            override suspend fun getDailyStats(cameraId: String, date: String): ApiResult<CameraDailyStatsDto> = ApiResult.Error("n/a", 501)
+            override suspend fun getDailyStatsForAll(date: String): ApiResult<List<CameraDailyStatsDto>> =
+                ApiResult.Error("network error", 503)
+            override suspend fun getMonitoringDashboard(date: String): ApiResult<CameraMonitoringDashboardDto> = ApiResult.Error("n/a", 501)
+            override suspend fun getGlobalCaptureRate(date: String): ApiResult<GlobalDailyCaptureRateDto> = ApiResult.Error("n/a", 501)
+            override suspend fun createCamera(camera: Camera): String = ""
+            override suspend fun updateCamera(camera: Camera) {}
+            override suspend fun deleteCamera(cameraId: String) {}
+            override suspend fun refresh() {}
+        }
+        // No initialCameras → loadData() runs and reaches the error path
+        val v = CamerasViewModel(cameraRepository = repo)
+        val job = launch { v.filteredCameras.collect { } }
+        advanceUntilIdle()
+        assertNotNull(v.error.value)
+        assertFalse(v.isLoading.value)
+        job.cancel()
+    }
+
+    @Test
+    fun `stats success does not produce an error`() = runTest {
+        val stats = CameraDailyStatsDto(cameraId = "A", date = "2026-01-01", expectedImages = 10, receivedImages = 8, missingImages = 2, isActive = true)
+        val repo = object : CameraRepository {
+            override fun observeCameras(siteId: String?): Flow<List<Camera>> = flowOf(emptyList())
+            override fun observeCamera(cameraId: String): Flow<Camera?> = flowOf(null)
+            override suspend fun getCapturesByCamera(cameraId: String): ApiResult<List<CaptureDto>> = ApiResult.Success(emptyList())
+            override suspend fun getDailyStats(cameraId: String, date: String): ApiResult<CameraDailyStatsDto> = ApiResult.Error("n/a", 501)
+            override suspend fun getDailyStatsForAll(date: String): ApiResult<List<CameraDailyStatsDto>> =
+                ApiResult.Success(listOf(stats))
+            override suspend fun getMonitoringDashboard(date: String): ApiResult<CameraMonitoringDashboardDto> = ApiResult.Error("n/a", 501)
+            override suspend fun getGlobalCaptureRate(date: String): ApiResult<GlobalDailyCaptureRateDto> = ApiResult.Error("n/a", 501)
+            override suspend fun createCamera(camera: Camera): String = ""
+            override suspend fun updateCamera(camera: Camera) {}
+            override suspend fun deleteCamera(cameraId: String) {}
+            override suspend fun refresh() {}
+        }
+        val v = CamerasViewModel(cameraRepository = repo)
+        val job = launch { v.filteredCameras.collect { } }
+        advanceUntilIdle()
+        assertNull(v.error.value)
+        assertFalse(v.isLoading.value)
+        job.cancel()
     }
 
     // ── Helper ────────────────────────────────────────────────────────────────

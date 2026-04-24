@@ -1,18 +1,31 @@
 package crocalert.app
 
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import crocalert.app.feature.alerts.ui.AlertDetailScreen
+import crocalert.app.ui.auth.AuthViewModel
 import crocalert.app.ui.auth.ForgotPasswordScreen
 import crocalert.app.ui.auth.LoginScreen
 import crocalert.app.ui.auth.MfaScreen
+import crocalert.app.ui.auth.MfaSetupScreen
 import crocalert.app.ui.auth.RegisterScreen
+import crocalert.app.ui.auth.SessionCheckResult
 import crocalert.app.ui.auth.SessionManager
 import crocalert.app.ui.auth.SplashScreen
 import crocalert.app.ui.dashboard.DashboardScreen
@@ -21,52 +34,189 @@ import crocalert.app.ui.dashboard.DashboardTab
 @Composable
 fun App() {
     val navController = rememberNavController()
-    var detailSelectedTab by remember { mutableStateOf(DashboardTab.Alerts) }
+    val scope = rememberCoroutineScope()
+    var detailSelectedTab by rememberSaveable { mutableStateOf(DashboardTab.Alerts) }
+    var sessionExpired by rememberSaveable { mutableStateOf(false) }
+
+    val authViewModel: AuthViewModel = viewModel { AuthViewModel() }
+    val loginError by authViewModel.loginError.collectAsState()
+    val mfaError by authViewModel.mfaError.collectAsState()
+    val isLoading by authViewModel.isLoading.collectAsState()
+    val registerError by authViewModel.registerError.collectAsState()
+    val registerSuccess by authViewModel.registerSuccess.collectAsState()
+    val totpSetup by authViewModel.totpSetup.collectAsState()
+    val totpSetupError by authViewModel.totpSetupError.collectAsState()
+    val enrollError by authViewModel.enrollError.collectAsState()
+    val passwordResetSent by authViewModel.passwordResetSent.collectAsState()
+    val passwordResetError by authViewModel.passwordResetError.collectAsState()
+    val isPasswordResetLoading by authViewModel.isPasswordResetLoading.collectAsState()
 
     NavHost(navController = navController, startDestination = "splash") {
         composable("splash") {
-            SplashScreen(onSessionChecked = { isLoggedIn ->
-                val dest = if (isLoggedIn) "home" else "login"
+            SplashScreen(onSessionChecked = { result ->
+                sessionExpired = result == SessionCheckResult.Expired
+                val dest = if (result == SessionCheckResult.Active) "home" else "login"
                 navController.navigate(dest) { popUpTo("splash") { inclusive = true } }
             })
         }
         composable("login") {
+            var savedEmail by rememberSaveable { mutableStateOf("") }
+            LaunchedEffect(Unit) { savedEmail = SessionManager.getSavedEmail() ?: "" }
             LoginScreen(
-                onLogin = { _, _, rememberDevice ->
-                    if (rememberDevice) SessionManager.rememberDevice()
-                    navController.navigate("mfa") { popUpTo("login") { inclusive = false } }
+                isLoading = isLoading,
+                error = loginError,
+                initialEmail = savedEmail,
+                sessionExpired = sessionExpired,
+                onLogin = { email, password, rememberDevice ->
+                    sessionExpired = false
+                    authViewModel.login(
+                        email = email,
+                        password = password,
+                        rememberDevice = rememberDevice,
+                        onMfaRequired = {
+                            navController.navigate("mfa") {
+                                popUpTo("login") { inclusive = false }
+                            }
+                        },
+                        onMfaEnrollmentRequired = {
+                            navController.navigate("mfa_setup") {
+                                popUpTo("login") { inclusive = false }
+                            }
+                        },
+                        onSuccess = {
+                            navController.navigate("home") {
+                                popUpTo("login") { inclusive = true }
+                            }
+                        },
+                    )
                 },
                 onRegister = { navController.navigate("register") },
                 onForgotPassword = { navController.navigate("forgot_password") },
+                onErrorDismiss = { authViewModel.clearLoginError() },
             )
         }
         composable("register") {
             RegisterScreen(
-                onRegister = { _, _, _, _, _ -> navController.popBackStack() },
+                isLoading = isLoading,
+                registerError = registerError,
+                registerSuccess = registerSuccess,
+                onRegister = { nombre, apellidos, email, rol, password ->
+                    authViewModel.register(nombre, apellidos, email, rol, password)
+                },
+                onSuccessDismiss = {
+                    authViewModel.clearRegisterSuccess()
+                    navController.navigate("login") {
+                        popUpTo("register") { inclusive = true }
+                    }
+                },
+                onErrorDismiss = { authViewModel.clearRegisterError() },
             )
         }
         composable("forgot_password") {
-            ForgotPasswordScreen(onBack = { navController.popBackStack() })
+            ForgotPasswordScreen(
+                isSending = isPasswordResetLoading,
+                emailSent = passwordResetSent,
+                sendError = passwordResetError,
+                onSend = { email -> authViewModel.sendPasswordReset(email) },
+                onBack = {
+                    authViewModel.clearPasswordResetState()
+                    navController.popBackStack()
+                },
+            )
         }
         composable("mfa") {
             MfaScreen(
-                onVerify = { _ ->
-                    navController.navigate("home") { popUpTo("login") { inclusive = true } }
+                isLoading = isLoading,
+                error = mfaError,
+                onVerify = { otp ->
+                    authViewModel.verifyTotp(otp) {
+                        navController.navigate("home") {
+                            popUpTo("login") { inclusive = true }
+                        }
+                    }
                 },
                 onResend = {},
                 onUseBackupCode = {},
+                onErrorDismiss = { authViewModel.clearMfaError() },
+            )
+        }
+        composable("mfa_setup") {
+            MfaSetupScreen(
+                isLoading = isLoading,
+                setupData = totpSetup,
+                setupError = totpSetupError,
+                enrollError = enrollError,
+                onGenerateSetup = { authViewModel.generateTotpSetup() },
+                onEnroll = { otp ->
+                    authViewModel.enrollTotp(otp) {
+                        authViewModel.clearTotpSetup()
+                        navController.navigate("home") {
+                            popUpTo("login") { inclusive = true }
+                        }
+                    }
+                },
+                onEnrollErrorDismiss = { authViewModel.clearEnrollError() },
             )
         }
         composable("home") {
+            var showSessionExpiredDialog by remember { mutableStateOf(false) }
+            var isNavigatingOut by remember { mutableStateOf(false) }
+            // Read the session expiry timestamp once on entry. Keying the timer
+            // LaunchedEffect on this value means the timer restarts if the session
+            // is renewed while the user is on this screen (e.g., silent token refresh).
+            var sessionExpiryMs by remember { mutableStateOf<Long?>(null) }
+
+            LaunchedEffect(Unit) {
+                sessionExpiryMs = SessionManager.sessionRemainingMs()
+                    ?.takeIf { it > 0L }
+                    ?.let { System.currentTimeMillis() + it }
+            }
+
+            // Timer is keyed on the expiry timestamp rather than Unit so it restarts
+            // automatically if sessionExpiryMs is updated.
+            LaunchedEffect(sessionExpiryMs) {
+                val expiryMs = sessionExpiryMs ?: return@LaunchedEffect
+                val remaining = (expiryMs - System.currentTimeMillis()).coerceAtLeast(0L)
+                if (remaining > 0L) delay(remaining)
+                showSessionExpiredDialog = true
+            }
+
+            if (showSessionExpiredDialog) {
+                AlertDialog(
+                    onDismissRequest = {},
+                    title = { Text("Sesión expirada") },
+                    text = { Text("Tu sesión ha expirado. Por favor, inicia sesión nuevamente.") },
+                    confirmButton = {
+                        TextButton(
+                            enabled = !isNavigatingOut,
+                            onClick = {
+                                if (isNavigatingOut) return@TextButton
+                                isNavigatingOut = true
+                                showSessionExpiredDialog = false
+                                sessionExpired = true
+                                scope.launch {
+                                    SessionManager.logout()
+                                    navController.navigate("login") {
+                                        popUpTo("home") { inclusive = true }
+                                    }
+                                }
+                            },
+                        ) { Text("Aceptar") }
+                    },
+                )
+            }
+
             DashboardScreen(
                 onAlertClick = { alertId ->
                     detailSelectedTab = DashboardTab.Alerts
                     navController.navigate("alert_detail/$alertId")
                 },
                 onLogout = {
-                    SessionManager.forgetDevice()
-                    navController.navigate("login") {
-                        popUpTo("home") { inclusive = true }
+                    scope.launch {
+                        SessionManager.logout()
+                        navController.navigate("login") {
+                            popUpTo("home") { inclusive = true }
+                        }
                     }
                 },
             )

@@ -44,8 +44,8 @@ class WorkManagerSyncScheduler(private val context: Context) : SyncScheduler {
     }
 
     override fun cancelAll() {
-        workManager.cancelAllWorkByTag(SyncWorkNames.ALERT_SYNC_PERIODIC)
-        workManager.cancelAllWorkByTag(SyncWorkNames.CAMERA_SYNC_PERIODIC)
-        workManager.cancelAllWorkByTag(SyncWorkNames.SITE_SYNC_PERIODIC)
+        workManager.cancelUniqueWork(SyncWorkNames.ALERT_SYNC_PERIODIC)
+        workManager.cancelUniqueWork(SyncWorkNames.CAMERA_SYNC_PERIODIC)
+        workManager.cancelUniqueWork(SyncWorkNames.SITE_SYNC_PERIODIC)
     }
 }

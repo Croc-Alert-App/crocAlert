@@ -27,10 +27,16 @@ import crocalert.app.theme.CrocWhite
 import kotlinx.coroutines.delay
 
 @Composable
-fun SplashScreen(onSessionChecked: (isLoggedIn: Boolean) -> Unit) {
+fun SplashScreen(onSessionChecked: (SessionCheckResult) -> Unit) {
     LaunchedEffect(Unit) {
         delay(2_000L)
-        onSessionChecked(SessionManager.isDeviceRemembered)
+        val result = SessionManager.checkSession()
+        if (result == SessionCheckResult.Active) {
+            // Restore UserSession from the still-authenticated Firebase user so
+            // the dashboard has name, email, and role without going through login.
+            FirebaseAuthClient.restoreSession()
+        }
+        onSessionChecked(result)
     }
 
     Box(

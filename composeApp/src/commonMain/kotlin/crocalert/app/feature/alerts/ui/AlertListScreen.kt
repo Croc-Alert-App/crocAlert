@@ -21,6 +21,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.DateRange
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -35,7 +36,6 @@ import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -48,6 +48,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import crocalert.app.shared.AppModule
 import crocalert.app.feature.alerts.presentation.AlertFilter
 import crocalert.app.feature.alerts.presentation.AlertsUiState
@@ -87,9 +88,8 @@ private fun List<Alert>.forTab(tab: AlertTab): List<Alert> =
 @Composable
 fun AlertListScreen(
     onAlertClick: (String) -> Unit = {},
-    viewModel: AlertsViewModel = remember { AlertsViewModel(AppModule.provideAlertRepository()) },
+    viewModel: AlertsViewModel = viewModel { AlertsViewModel(AppModule.provideAlertRepository()) },
 ) {
-    DisposableEffect(viewModel) { onDispose { viewModel.clear() } }
 
     val uiState by viewModel.uiState.collectAsState()
     val activeFilter by viewModel.activeFilter.collectAsState()
@@ -307,8 +307,15 @@ private fun CustomRangeBar(
                     .padding(horizontal = 14.dp, vertical = 6.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
+                Icon(
+                    imageVector = Icons.Outlined.DateRange,
+                    contentDescription = null,
+                    tint = CrocWhite,
+                    modifier = Modifier.size(16.dp),
+                )
+                Spacer(Modifier.width(6.dp))
                 Text(
-                    text = "📅  ${formatDateMs(customRange.startMs)} – ${formatDateMs(customRange.endMs)}",
+                    text = "${formatDateMs(customRange.startMs)} – ${formatDateMs(customRange.endMs)}",
                     color = CrocWhite,
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.SemiBold,
@@ -337,8 +344,15 @@ private fun CustomRangeBar(
             modifier = modifier,
             contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
         ) {
+            Icon(
+                imageVector = Icons.Outlined.DateRange,
+                contentDescription = null,
+                tint = CrocBlue,
+                modifier = Modifier.size(16.dp),
+            )
+            Spacer(Modifier.width(6.dp))
             Text(
-                text = "📅  Rango de fechas personalizado",
+                text = "Personalizado",
                 style = MaterialTheme.typography.bodySmall,
                 color = CrocBlue,
             )

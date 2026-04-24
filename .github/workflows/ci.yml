@@ -153,7 +153,7 @@ jobs:
         run: chmod +x gradlew
 
       - name: Run Android host unit tests
-        run: ./gradlew :androidApp:testDebugUnitTest --no-daemon --continue
+        run: ./gradlew :androidApp:testDebugUnitTest -x processDebugGoogleServices --no-daemon --continue
 
       - name: Upload Android unit test report
         if: always()

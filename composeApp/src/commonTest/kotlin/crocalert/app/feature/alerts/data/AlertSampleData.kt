@@ -6,29 +6,8 @@ import crocalert.app.model.AlertStatus
 import crocalert.app.model.AlertType
 import kotlinx.datetime.Clock
 
-/**
- * Centralized mock data for the Alerts List feature.
- *
- * Timestamps are relative to [Clock.System.now()] so date-based filters
- * always return predictable subsets regardless of when the app is opened.
- *
- * Distribution (9 alerts total):
- *
- *  Id       Priority   Age              TODAY  WEEK  MONTH  ALL
- *  001      CRITICAL   just now           ✓      ✓     ✓     ✓
- *  002      HIGH       12 min ago         ✓      ✓     ✓     ✓
- *  003      MEDIUM     45 min ago         ✓      ✓     ✓     ✓
- *  004      MEDIUM     2.5 hr ago         ✓      ✓     ✓     ✓
- *  007      CRITICAL   1 day ago          ✗      ✓     ✓     ✓
- *  008      HIGH       2 days ago         ✗      ✓     ✓     ✓
- *  009      MEDIUM     8 days ago         ✗      ✗     ✓     ✓
- *  005      LOW        3 days ago         ✗      ✓     ✓     ✓  (not shown in tabs)
- *  006      LOW        12 days ago        ✗      ✗     ✓     ✓  (not shown in tabs)
- *
- * LOW priority alerts exist in the raw data but are intentionally excluded
- * from both tabs (Alerts = CRITICAL+HIGH, Pre-Alerts = MEDIUM).
- */
 object AlertSampleData {
+    private const val SAMPLE_THUMBNAIL = "https://drive.google.com/file/d/17458lCf5kwIodwI6hZ0j0E5VOrDu61_Y/view?usp=drivesdk"
 
     val alerts: List<Alert>
         get() {
@@ -45,7 +24,7 @@ object AlertSampleData {
                     sourceName = "CAM-12 Río Conchal",
                     isRead = false,
                     folder = "alertas",
-                    thumbnailUrl = "https://drive.google.com/file/d/17458lCf5kwIodwI6hZ0j0E5VOrDu61_Y/view?usp=drivesdk",
+                    thumbnailUrl = SAMPLE_THUMBNAIL,
                 ),
                 Alert(
                     id = "alert-002",
@@ -58,7 +37,7 @@ object AlertSampleData {
                     sourceName = "CAM-08 Laguna Norte",
                     isRead = false,
                     folder = "alertas",
-                    thumbnailUrl = "https://drive.google.com/file/d/17458lCf5kwIodwI6hZ0j0E5VOrDu61_Y/view?usp=drivesdk",
+                    thumbnailUrl = SAMPLE_THUMBNAIL,
                 ),
                 Alert(
                     id = "alert-003",
@@ -71,7 +50,7 @@ object AlertSampleData {
                     sourceName = "CAM-03 Sector Este",
                     isRead = true,
                     folder = "pre-alertas",
-                    thumbnailUrl = "https://drive.google.com/file/d/17458lCf5kwIodwI6hZ0j0E5VOrDu61_Y/view?usp=drivesdk",
+                    thumbnailUrl = SAMPLE_THUMBNAIL,
                 ),
                 Alert(
                     id = "alert-004",
@@ -84,7 +63,7 @@ object AlertSampleData {
                     sourceName = "CAM-05 Margen Sur",
                     isRead = true,
                     folder = "pre-alertas",
-                    thumbnailUrl = "https://drive.google.com/file/d/17458lCf5kwIodwI6hZ0j0E5VOrDu61_Y/view?usp=drivesdk",
+                    thumbnailUrl = SAMPLE_THUMBNAIL,
                 ),
                 Alert(
                     id = "alert-007",
@@ -97,7 +76,7 @@ object AlertSampleData {
                     sourceName = "CAM-02 Acceso Principal",
                     isRead = false,
                     folder = "alertas",
-                    thumbnailUrl = "https://drive.google.com/file/d/17458lCf5kwIodwI6hZ0j0E5VOrDu61_Y/view?usp=drivesdk",
+                    thumbnailUrl = SAMPLE_THUMBNAIL,
                 ),
                 Alert(
                     id = "alert-008",
@@ -110,7 +89,7 @@ object AlertSampleData {
                     sourceName = "CAM-09 Laguna Este",
                     isRead = true,
                     folder = "alertas",
-                    thumbnailUrl = "https://drive.google.com/file/d/17458lCf5kwIodwI6hZ0j0E5VOrDu61_Y/view?usp=drivesdk",
+                    thumbnailUrl = SAMPLE_THUMBNAIL,
                 ),
                 Alert(
                     id = "alert-009",
@@ -123,7 +102,7 @@ object AlertSampleData {
                     sourceName = "CAM-07 Zona Oeste",
                     isRead = true,
                     folder = "pre-alertas",
-                    thumbnailUrl = "https://drive.google.com/file/d/17458lCf5kwIodwI6hZ0j0E5VOrDu61_Y/view?usp=drivesdk",
+                    thumbnailUrl = SAMPLE_THUMBNAIL,
                 ),
                 Alert(
                     id = "alert-005",

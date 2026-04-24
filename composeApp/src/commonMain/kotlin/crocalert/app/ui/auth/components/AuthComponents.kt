@@ -20,8 +20,11 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.RadioButtonUnchecked
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.ui.graphics.Color
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
@@ -344,6 +347,60 @@ fun AuthFooterText(modifier: Modifier = Modifier) {
         fontSize = 11.sp,
         color = CrocNeutralDark,
     )
+}
+
+// ── Password requirements hint ────────────────────────────────────────────────
+
+private val PasswordGreen = Color(0xFF2E7D32)
+
+/**
+ * Live checklist shown below the password field.
+ * Each rule is neutral (gray) until the user starts typing, then turns
+ * green when satisfied or red when violated.
+ */
+@Composable
+fun PasswordRequirementsHint(
+    password: String,
+    dirty: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    val rules = listOf(
+        "Mínimo 8 caracteres" to (password.length >= 8),
+        "Una letra mayúscula"  to password.any { it.isUpperCase() },
+        "Una letra minúscula"  to password.any { it.isLowerCase() },
+        "Un número"            to password.any { it.isDigit() },
+    )
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(start = 4.dp, top = 6.dp),
+        verticalArrangement = Arrangement.spacedBy(3.dp),
+    ) {
+        rules.forEach { (label, met) ->
+            val color = when {
+                met          -> PasswordGreen
+                dirty        -> MaterialTheme.colorScheme.error
+                else         -> CrocNeutralDark
+            }
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                Icon(
+                    imageVector = if (met) Icons.Default.CheckCircle
+                                  else Icons.Default.RadioButtonUnchecked,
+                    contentDescription = null,
+                    tint = color,
+                    modifier = Modifier.size(14.dp),
+                )
+                Text(
+                    text = label,
+                    fontSize = 11.sp,
+                    color = color,
+                )
+            }
+        }
+    }
 }
 
 // ── Private helpers ───────────────────────────────────────────────────────────

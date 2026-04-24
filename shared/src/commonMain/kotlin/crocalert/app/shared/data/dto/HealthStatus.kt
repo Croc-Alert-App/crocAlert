@@ -7,5 +7,6 @@ import kotlinx.serialization.Serializable
 enum class HealthStatus {
     @SerialName("SALUDABLE") HEALTHY,
     @SerialName("PRECAUCION") CAUTION,
-    @SerialName("RIESGO") RISK
+    @SerialName("RIESGO") RISK,
+    @SerialName("PENDIENTE") PENDING,
 }

@@ -40,6 +40,9 @@ kotlin {
             implementation(libs.androidxActivityCompose)
             implementation(libs.composeUiToolingPreview)
             implementation(libs.koinAndroidxCompose)
+            implementation(libs.firebaseAuthKtx)
+            implementation(libs.kotlinxCoroutinesPlayServices)
+            implementation(libs.datastorePrefs)
         }
 
         commonMain.dependencies {
@@ -56,11 +59,12 @@ kotlin {
             implementation(compose.materialIconsExtended)
             implementation(libs.kotlinxDatetime)
             implementation(libs.kotlinxCoroutinesCore)
+            implementation(libs.qrose)
 
             implementation(project.dependencies.platform(libs.koinBom))
             implementation(libs.koinCore)
             implementation(libs.koinCompose)
-            implementation("media.kamel:kamel-image:0.9.3")
+            implementation(libs.kamelImage)
         }
 
         commonTest.dependencies {
@@ -114,7 +118,7 @@ kover {
         }
         verify {
             rule("Minimum line coverage") {
-                bound { minValue = 30 }
+                bound { minValue = 55 }
             }
         }
     }

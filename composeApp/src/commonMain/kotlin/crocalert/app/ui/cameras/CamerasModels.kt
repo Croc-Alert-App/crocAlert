@@ -29,9 +29,9 @@ enum class CameraStatus {
     }
 
     val badgeLabel: String get() = when (this) {
-        Alert     -> "Alerta"
-        Attention -> "Precaución"
-        Ok        -> "Bien"
+        Alert     -> "Inactiva"
+        Attention -> "En Riesgo"
+        Ok        -> "Saludable"
     }
 
     /** Left-border / dot / badge accent color for this status. */
@@ -42,24 +42,14 @@ enum class CameraStatus {
     }
 }
 
-enum class VisibilityFilter {
-    Active, Deleted, All;
-
-    val label: String get() = when (this) {
-        Active  -> "Activas"
-        Deleted -> "Desactivadas"
-        All     -> "Todas"
-    }
-}
-
 enum class CameraFilter {
     All, Ok, Attention, Alert;
 
     val label: String get() = when (this) {
-        All       -> "Todos"
-        Ok        -> "Bien"
-        Attention -> "Precaución"
-        Alert     -> "Alerta"
+        All       -> "Todas"
+        Ok        -> "Saludables"
+        Attention -> "En Riesgo"
+        Alert     -> "Inactivas"
     }
 
     /** Corresponding [CameraStatus] for count lookup; null for [All]. */

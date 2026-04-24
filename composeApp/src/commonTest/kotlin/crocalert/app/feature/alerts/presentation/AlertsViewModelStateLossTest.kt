@@ -50,7 +50,6 @@ class AlertsViewModelStateLossTest {
         vm1.setFilter(AlertFilter.THIS_WEEK)
         assertEquals(AlertFilter.THIS_WEEK, vm1.activeFilter.value)
 
-        vm1.clear()
         scope1.cancel()
 
         val scope2 = CoroutineScope(StandardTestDispatcher(testScheduler))
@@ -63,7 +62,6 @@ class AlertsViewModelStateLossTest {
             "R-11: Filter is NOT persisted across VM recreation. " +
                 "If this fails, SavedStateHandle was added — update the test accordingly."
         )
-        vm2.clear()
         scope2.cancel()
     }
 
@@ -78,7 +76,6 @@ class AlertsViewModelStateLossTest {
         vm1.toggleSort()
         assertEquals(SortDirection.ASC, vm1.sortDirection.value)
 
-        vm1.clear()
         scope1.cancel()
 
         val scope2 = CoroutineScope(StandardTestDispatcher(testScheduler))
@@ -90,7 +87,6 @@ class AlertsViewModelStateLossTest {
             vm2.sortDirection.value,
             "R-11: Sort direction is NOT persisted across VM recreation."
         )
-        vm2.clear()
         scope2.cancel()
     }
 
@@ -105,7 +101,6 @@ class AlertsViewModelStateLossTest {
         vm1.setCustomRange(1_000L, 2_000L)
         assertNotNull(vm1.customRange.value)
 
-        vm1.clear()
         scope1.cancel()
 
         val scope2 = CoroutineScope(StandardTestDispatcher(testScheduler))
@@ -116,7 +111,6 @@ class AlertsViewModelStateLossTest {
             vm2.customRange.value,
             "R-11: Custom date range is NOT persisted across VM recreation."
         )
-        vm2.clear()
         scope2.cancel()
     }
 
@@ -128,7 +122,6 @@ class AlertsViewModelStateLossTest {
         val vm = AlertsViewModel(repo(), scope)
         advanceUntilIdle()
 
-        vm.clear()
         scope.cancel()
     }
 
@@ -143,7 +136,6 @@ class AlertsViewModelStateLossTest {
         assertEquals(SortDirection.DESC, vm.sortDirection.value)
         assertNull(vm.customRange.value)
 
-        vm.clear()
         scope.cancel()
     }
 }

@@ -1,5 +1,8 @@
 package crocalert.app.ui.profile
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -11,16 +14,13 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.Icon
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
@@ -35,11 +35,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import crocalert.app.shared.UserSession
 import crocalert.app.theme.CrocBlue
 import crocalert.app.theme.CrocBlueLight
 
@@ -50,6 +52,8 @@ fun ProfileScreen(
 ) {
     val prefs by viewModel.syncPreferences.collectAsState()
     var showLogoutDialog by remember { mutableStateOf(false) }
+    val isAdmin = UserSession.isAdmin
+    val nameLabel = UserSession.fullName.ifBlank { UserSession.email.substringBefore("@") }
 
     if (showLogoutDialog) {
         LogoutConfirmDialog(
@@ -58,7 +62,12 @@ fun ProfileScreen(
         )
     }
 
-    Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp)) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 20.dp)
+    ) {
         Spacer(Modifier.height(20.dp))
         Text(
             text = "PERFIL",
@@ -67,26 +76,12 @@ fun ProfileScreen(
         )
         Spacer(Modifier.height(4.dp))
         Text(
-            text = "Trabajador del SINAC · Región de Tárcoles",
+            text = "$nameLabel · ${UserSession.roleLabel}",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
 
-        Spacer(Modifier.height(28.dp))
-
-        // ── Sync settings section ──────────────────────────────────────────────
-        Text(
-            text = "Configuración de sincronización",
-            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-            color = MaterialTheme.colorScheme.onSurface,
-        )
-        Spacer(Modifier.height(4.dp))
-        Text(
-            text = "Tiempo mínimo entre sincronizaciones automáticas. Valores menores actualizan más seguido pero consumen más datos.",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(20.dp))
 
         Surface(
             shape = RoundedCornerShape(12.dp),
@@ -94,23 +89,77 @@ fun ProfileScreen(
             tonalElevation = 2.dp,
             modifier = Modifier.fillMaxWidth(),
         ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                TtlRow(
-                    label = "Alertas y pre-alertas",
-                    description = "Frecuencia de sincronización de imágenes detectadas",
-                    value = prefs.alertsTtlMinutes,
-                    onValueChange = { viewModel.setAlertsTtl(it) },
-                )
-                HorizontalDivider(
-                    modifier = Modifier.padding(vertical = 12.dp),
-                    color = MaterialTheme.colorScheme.outlineVariant,
-                )
-                TtlRow(
-                    label = "Cámaras",
-                    description = "Frecuencia de sincronización del estado de cámaras",
-                    value = prefs.camerasTtlMinutes,
-                    onValueChange = { viewModel.setCamerasTtl(it) },
-                )
+            Row(
+                modifier = Modifier.padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = nameLabel,
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                    Spacer(Modifier.height(2.dp))
+                    Text(
+                        text = UserSession.email,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Surface(
+                    shape = RoundedCornerShape(6.dp),
+                    color = CrocBlue,
+                ) {
+                    Text(
+                        text = UserSession.roleLabel,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color.White,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                    )
+                }
+            }
+        }
+
+        if (isAdmin) {
+            Spacer(Modifier.height(28.dp))
+
+            Text(
+                text = "Configuración de sincronización",
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = "Tiempo mínimo entre sincronizaciones automáticas. Valores menores actualizan más seguido pero consumen más datos.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.height(16.dp))
+
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = MaterialTheme.colorScheme.surface,
+                tonalElevation = 2.dp,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    TtlRow(
+                        label = "Alertas y pre-alertas",
+                        description = "Frecuencia de sincronización de imágenes detectadas",
+                        value = prefs.alertsTtlMinutes,
+                        onValueChange = { viewModel.setAlertsTtl(it) },
+                    )
+                    HorizontalDivider(
+                        modifier = Modifier.padding(vertical = 12.dp),
+                        color = MaterialTheme.colorScheme.outlineVariant,
+                    )
+                    TtlRow(
+                        label = "Cámaras",
+                        description = "Frecuencia de sincronización del estado de cámaras",
+                        value = prefs.camerasTtlMinutes,
+                        onValueChange = { viewModel.setCamerasTtl(it) },
+                    )
+                }
             }
         }
 
@@ -123,10 +172,10 @@ fun ProfileScreen(
             shape = RoundedCornerShape(8.dp),
             colors = ButtonDefaults.buttonColors(
                 containerColor = CrocBlue,
-                contentColor = androidx.compose.ui.graphics.Color.White,
+                contentColor = Color.White,
             ),
         ) {
-            Icon(
+            androidx.compose.material3.Icon(
                 imageVector = Icons.AutoMirrored.Filled.ExitToApp,
                 contentDescription = null,
                 modifier = Modifier.size(18.dp),
@@ -181,9 +230,9 @@ private fun TtlRow(
             BasicTextField(
                 value = text,
                 onValueChange = { raw ->
-                    val filtered = raw.filter { it.isDigit() }.take(3)
+                    val filtered = raw.filter { it.isDigit() }.take(4)
                     text = filtered
-                    filtered.toIntOrNull()?.coerceIn(1, 120)?.let { onValueChange(it) }
+                    filtered.toIntOrNull()?.coerceIn(1, 1440)?.let { onValueChange(it) }
                 },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 singleLine = true,

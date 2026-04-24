@@ -1,8 +1,17 @@
 package crocalert.app.ui.auth
 
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -20,6 +29,7 @@ import crocalert.app.ui.auth.components.CrocAlertDropdownField
 import crocalert.app.ui.auth.components.CrocAlertPasswordField
 import crocalert.app.ui.auth.components.CrocAlertPrimaryButton
 import crocalert.app.ui.auth.components.CrocAlertTextField
+import crocalert.app.ui.auth.components.PasswordRequirementsHint
 
 private val USER_ROLES = listOf("Administrador", "Experto SINAC")
 
@@ -29,7 +39,12 @@ private val PASSWORD_REGEX = Regex("^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d).{8,}\$")
 
 @Composable
 fun RegisterScreen(
+    isLoading: Boolean = false,
+    registerError: String? = null,
+    registerSuccess: Boolean = false,
     onRegister: (nombre: String, apellidos: String, email: String, rol: String, password: String) -> Unit,
+    onSuccessDismiss: () -> Unit,
+    onErrorDismiss: () -> Unit = {},
 ) {
     var nombre by remember { mutableStateOf("") }
     var apellidos by remember { mutableStateOf("") }
@@ -41,24 +56,27 @@ fun RegisterScreen(
     // Dirty flags — errors only show after the user touches each field
     var nombreDirty by remember { mutableStateOf(false) }
     var apellidosDirty by remember { mutableStateOf(false) }
+    var emailDirty by remember { mutableStateOf(false) }
+    var passwordDirty by remember { mutableStateOf(false) }
+    var confirmDirty by remember { mutableStateOf(false) }
     var rolDirty by remember { mutableStateOf(false) }
+
+    // Firebase errors that map to a specific field are shown inline on that field;
+    // everything else falls through to the generic bottom banner.
+    val isEmailTaken = registerError == "Este correo ya está registrado."
 
     // Derived error messages
     val nombreError = if (nombreDirty && nombre.isBlank()) "Este campo es requerido" else null
     val apellidosError = if (apellidosDirty && apellidos.isBlank()) "Este campo es requerido" else null
     val emailError = when {
-        email.isEmpty() -> null
+        isEmailTaken -> registerError
+        !emailDirty || email.isEmpty() -> null
         !email.matches(EMAIL_REGEX) -> "Correo electrónico inválido"
         else -> null
     }
-    val passwordError = when {
-        password.isEmpty() -> null
-        !password.matches(PASSWORD_REGEX) ->
-            "Mínimo 8 caracteres, una mayúscula, una minúscula y un número"
-        else -> null
-    }
+    val passwordInvalid = passwordDirty && password.isNotEmpty() && !password.matches(PASSWORD_REGEX)
     val confirmError = when {
-        confirmPassword.isEmpty() -> null
+        !confirmDirty || confirmPassword.isEmpty() -> null
         confirmPassword != password -> "Las contraseñas no coinciden"
         else -> null
     }
@@ -75,6 +93,43 @@ fun RegisterScreen(
         }
     }
 
+    // Success modal
+    if (registerSuccess) {
+        AlertDialog(
+            onDismissRequest = { /* require explicit button tap */ },
+            icon = {
+                Icon(
+                    imageVector = Icons.Default.CheckCircle,
+                    contentDescription = null,
+                    tint = CrocBlue,
+                )
+            },
+            title = {
+                Text(
+                    text = "¡Cuenta creada!",
+                    fontWeight = FontWeight.Bold,
+                    color = CrocBlue,
+                )
+            },
+            text = {
+                Text(
+                    "Te enviamos un correo de verificación a $email.\n\n" +
+                    "Revisa tu bandeja de entrada y haz clic en el enlace para activar tu cuenta. " +
+                    "Después podrás iniciar sesión y configurar la autenticación de dos pasos."
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = onSuccessDismiss) {
+                    Text(
+                        text = "Ir a iniciar sesión",
+                        color = CrocBlue,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                }
+            },
+        )
+    }
+
     AuthScreenScaffold {
         Spacer(Modifier.height(40.dp))
         Text(
@@ -89,7 +144,7 @@ fun RegisterScreen(
             value = nombre,
             onValueChange = { nombre = it; nombreDirty = true },
             label = "NOMBRE",
-            placeholder = "worker@sinac.go.cr",
+            placeholder = "Nombre",
             isError = nombreError != null,
             errorMessage = nombreError,
         )
@@ -98,16 +153,20 @@ fun RegisterScreen(
             value = apellidos,
             onValueChange = { apellidos = it; apellidosDirty = true },
             label = "APELLIDOS",
-            placeholder = "worker@sinac.go.cr",
+            placeholder = "Apellidos",
             isError = apellidosError != null,
             errorMessage = apellidosError,
         )
         Spacer(Modifier.height(16.dp))
         CrocAlertTextField(
             value = email,
-            onValueChange = { email = it },
+            onValueChange = {
+                email = it
+                emailDirty = true
+                if (isEmailTaken) onErrorDismiss()
+            },
             label = "CORREO ELECTRONICO",
-            placeholder = "worker@sinac.go.cr",
+            placeholder = "corre_electronico@ejemplo.com",
             keyboardType = KeyboardType.Email,
             isError = emailError != null,
             errorMessage = emailError,
@@ -125,24 +184,41 @@ fun RegisterScreen(
         Spacer(Modifier.height(16.dp))
         CrocAlertPasswordField(
             value = password,
-            onValueChange = { password = it },
+            onValueChange = { password = it; passwordDirty = true },
             label = "CONTRASEÑA",
-            isError = passwordError != null,
-            errorMessage = passwordError,
+            placeholder = "Crea tu contraseña",
+            isError = passwordInvalid,
         )
+        PasswordRequirementsHint(password = password, dirty = passwordDirty)
         Spacer(Modifier.height(16.dp))
         CrocAlertPasswordField(
             value = confirmPassword,
-            onValueChange = { confirmPassword = it },
+            onValueChange = { confirmPassword = it; confirmDirty = true },
             label = "CONFIRMACION DE CONTRASEÑA",
+            placeholder = "Repite tu contraseña",
             isError = confirmError != null,
             errorMessage = confirmError,
         )
+        if (registerError != null && !isEmailTaken) {
+            Spacer(Modifier.height(12.dp))
+            Text(
+                text = registerError,
+                color = MaterialTheme.colorScheme.error,
+                fontSize = 13.sp,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 4.dp),
+            )
+        }
         Spacer(Modifier.height(32.dp))
-        CrocAlertPrimaryButton(
-            text = "Registrarse",
-            onClick = { onRegister(nombre, apellidos, email, rol, password) },
-            enabled = isFormValid,
-        )
+        if (isLoading) {
+            CircularProgressIndicator(color = CrocBlue)
+        } else {
+            CrocAlertPrimaryButton(
+                text = "Registrarse",
+                onClick = { onRegister(nombre, apellidos, email, rol, password) },
+                enabled = isFormValid,
+            )
+        }
     }
 }

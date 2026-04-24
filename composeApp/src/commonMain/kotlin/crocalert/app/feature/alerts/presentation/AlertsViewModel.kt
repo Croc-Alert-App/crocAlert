@@ -1,12 +1,11 @@
 package crocalert.app.feature.alerts.presentation
 
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import crocalert.app.domain.repository.AlertRepository
 import crocalert.app.model.Alert
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -23,15 +22,18 @@ import kotlinx.datetime.toLocalDateTime
  * Single responsibility: owns the reactive state of the screen
  * (loading, error, filter, sort, custom range).
  *
- * Replacing mock data with real API data:
- * 1. Create a production [AlertRepository] in :shared.
- * 2. Provide it via Koin. No changes to this class or the UI are needed.
+ * [coroutineScope] is injectable for tests. In production it defaults to [viewModelScope]
+ * so the lifecycle is managed by the Jetpack ViewModel machinery and survives configuration
+ * changes correctly. Pass a [kotlinx.coroutines.test.TestScope] in unit tests.
  */
 class AlertsViewModel(
     private val repository: AlertRepository,
-    private val coroutineScope: CoroutineScope = CoroutineScope(Dispatchers.Main + SupervisorJob()),
+    coroutineScope: CoroutineScope? = null,
     private val clock: Clock = Clock.System,
-) {
+) : ViewModel() {
+
+    private val scope: CoroutineScope = coroutineScope ?: viewModelScope
+
     private val _uiState = MutableStateFlow<AlertsUiState>(AlertsUiState.Loading)
     val uiState: StateFlow<AlertsUiState> = _uiState.asStateFlow()
 
@@ -44,6 +46,7 @@ class AlertsViewModel(
     private val _customRange = MutableStateFlow<DateRange?>(null)
     val customRange: StateFlow<DateRange?> = _customRange.asStateFlow()
 
+    // Written and read only on the Main dispatcher (viewModelScope default).
     private var rawAlerts: List<Alert> = emptyList()
     private var loadJob: Job? = null
 
@@ -86,8 +89,9 @@ class AlertsViewModel(
                     _uiState.value = AlertsUiState.Empty("Toca 'Personalizado' para seleccionar un rango de fechas.")
                     return
                 }
-                // Include the full end-day by extending the end timestamp to 23:59:59.999.
-                rawAlerts.filter { it.createdAt in range.startMs..(range.endMs + DAY_MS - 1L) }
+                val safeEnd = if (range.endMs > Long.MAX_VALUE - DAY_MS) Long.MAX_VALUE
+                              else range.endMs + DAY_MS - 1L
+                rawAlerts.filter { it.createdAt in range.startMs..safeEnd }
             }
         }
 
@@ -101,7 +105,7 @@ class AlertsViewModel(
 
     private fun loadAlerts() {
         loadJob?.cancel()
-        loadJob = coroutineScope.launch {
+        loadJob = scope.launch {
             _uiState.value = AlertsUiState.Loading
             repository.observeAlerts()
                 .catch { error ->
@@ -120,8 +124,6 @@ class AlertsViewModel(
         val tz = TimeZone.currentSystemDefault()
         return clock.now().toLocalDateTime(tz).date.atStartOfDayIn(tz).toEpochMilliseconds()
     }
-
-    fun clear() = coroutineScope.cancel()
 
     private companion object {
         const val DAY_MS = 24 * 3_600_000L

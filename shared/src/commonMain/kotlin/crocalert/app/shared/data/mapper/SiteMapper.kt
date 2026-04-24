@@ -3,6 +3,7 @@ package crocalert.app.shared.data.mapper
 import crocalert.app.model.Site
 import crocalert.app.shared.data.dto.SiteDto
 
+/** Maps [SiteDto] to the [Site] domain model. */
 fun SiteDto.toModel(): Site = Site(
     id = id,
     code = code,

@@ -5,23 +5,47 @@ import androidx.lifecycle.viewModelScope
 import crocalert.app.domain.repository.CameraRepository
 import crocalert.app.model.Camera
 import crocalert.app.shared.AppModule
+import crocalert.app.shared.data.dto.CaptureDto
 import crocalert.app.shared.network.ApiResult
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.Clock
 import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.atStartOfDayIn
 import kotlinx.datetime.minus
 import kotlinx.datetime.plus
+import kotlinx.datetime.toInstant
 import kotlinx.datetime.toLocalDateTime
 import kotlinx.datetime.todayIn
 
 private const val MIN_EXPECTED = 1
 private const val MAX_EXPECTED = 48
+
+// Filename format: CAMXX_YYYY_MM_DD_HH_MM_SS.jpg — last 6 underscore-segments encode the timestamp.
+private fun CaptureDto.resolvedCaptureTimeMs(tz: TimeZone): Long? {
+    captureTime?.let { return it }
+    return runCatching {
+        val parts = name.substringBeforeLast(".").split("_")
+        if (parts.size < 7) return null
+        val n = parts.size
+        val dt = LocalDateTime(
+            year        = parts[n - 6].toInt(),
+            monthNumber = parts[n - 5].toInt(),
+            dayOfMonth  = parts[n - 4].toInt(),
+            hour        = parts[n - 3].toInt(),
+            minute      = parts[n - 2].toInt(),
+            second      = parts[n - 1].toInt(),
+        )
+        dt.toInstant(tz).toEpochMilliseconds()
+    }.getOrNull()
+}
 
 class CameraHistoryViewModel(
     private val cameraId: String,
@@ -32,26 +56,27 @@ class CameraHistoryViewModel(
     private val tz get() = TimeZone.currentSystemDefault()
     private val today get() = Clock.System.todayIn(tz)
     private var currentCamera: Camera? = null
+    private val loadMutex = Mutex()
 
     private val _uiState = MutableStateFlow(
         CameraHistoryUiState(
             cameraId = cameraId,
             cameraName = cameraName,
-            selectedDate = today.minus(1, DateTimeUnit.DAY), // start on yesterday — always a complete day
+            selectedDate = today, // open on today so counts match the camera list card
             received = 0,
             missing = 0,
             expected = DEFAULT_EXPECTED_PER_DAY,
             expectedPerDay = DEFAULT_EXPECTED_PER_DAY,
             integrityFlags = 0,
             captureSlots = emptyList(),
-            canGoNext = true, // can always navigate forward to today
+            canGoNext = false, // today is always the latest navigable date
             isLoading = true,
         )
     )
     val uiState: StateFlow<CameraHistoryUiState> = _uiState.asStateFlow()
 
     init {
-        // One-time init: load from camera model (single source of truth), then default
+        // single source of truth for expectedPerDay
         viewModelScope.launch {
             val cameraModel = repository.observeCamera(cameraId).first()
             currentCamera = cameraModel
@@ -61,7 +86,7 @@ class CameraHistoryViewModel(
             loadCaptures()
         }
 
-        // Continuously observe camera: keep name + expectedPerDay in sync with Firebase
+        // keep name + expectedPerDay in sync with Firebase
         viewModelScope.launch {
             repository.observeCamera(cameraId).collect { camera ->
                 currentCamera = camera
@@ -114,10 +139,10 @@ class CameraHistoryViewModel(
         }
     }
 
-    private suspend fun loadCaptures() {
+    private suspend fun loadCaptures() = loadMutex.withLock {
         val state = _uiState.value
         val date = state.selectedDate
-        val dateString = date.toString()           // "YYYY-MM-DD" — matches server route param
+        val dateString = date.toString()
         val expectedPerDay = state.expectedPerDay
         val currentToday = today
         val startMs = date.atStartOfDayIn(tz).toEpochMilliseconds()
@@ -126,13 +151,12 @@ class CameraHistoryViewModel(
         val nowMs   = Clock.System.now().toEpochMilliseconds()
         val isToday = date == currentToday
 
-        // Current slot index within today (0-based)
         val currentSlot = if (isToday)
             (((nowMs - startMs).coerceAtLeast(0) * expectedPerDay) / dayMs).toInt()
                 .coerceIn(0, expectedPerDay - 1)
         else expectedPerDay
 
-        // Fetch server-authoritative daily stats AND per-capture data in parallel
+        // server stats are authoritative for header counts; slot grid comes from per-capture data
         val statsResult  = repository.getDailyStats(cameraId, dateString)
         val captureResult = repository.getCapturesByCamera(cameraId)
 
@@ -141,33 +165,45 @@ class CameraHistoryViewModel(
                 isLoading = false,
                 error = "Error al cargar historial",
             )
-            return
+            return@withLock
         }
 
         // Build the slot grid from individual captures (capture-level detail)
         val captures = (captureResult as? ApiResult.Success)?.data ?: emptyList()
-        val capturesForDate = captures.filter { capture ->
-            val t = capture.captureTime ?: 0L
-            t >= startMs && t < endMs
+        // Date-range filter uses captureTime only — no filename fallback here.
+        // images_per_day is also computed from captureTime, so both stay in sync.
+        // Filename fallback is kept only for slot-index positioning below.
+        val capturesForDate = captures
+            .filter { capture ->
+                val t = capture.captureTime ?: 0L
+                t >= startMs && t < endMs
+            }
+            .sortedBy { it.captureTime ?: startMs }
+
+        // Assign each capture to its natural slot; if that slot is already occupied,
+        // overflow to the next empty slot (forward then backward). This ensures the
+        // number of blue/yellow indicators matches the received image count even when
+        // multiple captures arrive within the same time window.
+        val slotBuckets = Array(expectedPerDay) { mutableListOf<CaptureDto>() }
+        for (capture in capturesForDate) {
+            val natural = run {
+                val t = (capture.resolvedCaptureTimeMs(tz) ?: startMs).coerceAtLeast(startMs)
+                (((t - startMs) * expectedPerDay) / dayMs).toInt().coerceIn(0, expectedPerDay - 1)
+            }
+            val target = (natural until expectedPerDay).firstOrNull { slotBuckets[it].isEmpty() }
+                ?: (0 until natural).firstOrNull { slotBuckets[it].isEmpty() }
+            target?.let { slotBuckets[it].add(capture) }
         }
-        val bySlot = capturesForDate.groupBy { capture ->
-            val t = (capture.captureTime ?: startMs).coerceAtLeast(startMs)
-            (((t - startMs) * expectedPerDay) / dayMs).toInt()
-                .coerceIn(0, expectedPerDay - 1)
-        }
+
         val slotDurationHours = 24.0 / expectedPerDay
         val slots = (0 until expectedPerDay).map { slotIndex ->
             val slotStartHour = (slotIndex * slotDurationHours).toInt()
-            val slotCaptures = bySlot[slotIndex]
+            val slotCaptures = slotBuckets[slotIndex]
             val slotState = when {
-                slotCaptures != null && slotCaptures.any { it.driveUrl.isNotBlank() } ->
-                    CaptureSlotState.Received
-                slotCaptures != null ->
-                    CaptureSlotState.IntegrityFlag
-                isToday && slotIndex > currentSlot ->
-                    CaptureSlotState.Expected
-                else ->
-                    CaptureSlotState.Missing
+                slotCaptures.any { it.driveUrl.isNotBlank() } -> CaptureSlotState.Received
+                slotCaptures.isNotEmpty()                     -> CaptureSlotState.IntegrityFlag
+                isToday && slotIndex > currentSlot            -> CaptureSlotState.Expected
+                else                                          -> CaptureSlotState.Missing
             }
             CaptureSlot(hour = slotStartHour, state = slotState)
         }

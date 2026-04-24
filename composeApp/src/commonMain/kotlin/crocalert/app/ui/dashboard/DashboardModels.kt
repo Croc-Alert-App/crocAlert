@@ -1,29 +1,22 @@
 package crocalert.app.ui.dashboard
 
+import crocalert.app.model.Alert
+
 data class DashboardData(
     val activeCameras: Int,
+    val totalCameras: Int,
     val networkHealthPct: Float,
-    val activeAlerts: Int,
-    val criticalAlerts: Int,
+    val activeAlertas: Int,
+    val activePreAlertas: Int,
     val captureRate: String,
     val captureRatePct: Float,
-    val integrityPct: Float,
-    val networkTrend: List<NetworkTrendDay>,
-    val metadataMetrics: List<MetricItem>,
-    val recentActivity: List<ActivityEvent>
+    val recentActivity: List<Alert>
 )
 
-data class NetworkTrendDay(val label: String, val value: Float, val isToday: Boolean = false)
-
-data class MetricItem(val name: String, val progress: Float, val displayValue: String)
-
-data class ActivityEvent(
-    val title: String,
-    val timeAgo: String,
-    val severity: String,
-    val isNew: Boolean = false,
-    val alertId: String? = null,
-)
+sealed class DashboardFilter {
+    data class LastDays(val days: Int) : DashboardFilter()
+    data class Custom(val startMs: Long, val endMs: Long) : DashboardFilter()
+}
 
 // Navigation and sync state — defined here so ViewModels never import from UI component files.
 enum class DashboardTab { Home, Cameras, Alerts, Profile }

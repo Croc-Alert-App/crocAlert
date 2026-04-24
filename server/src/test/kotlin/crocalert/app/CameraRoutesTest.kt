@@ -15,9 +15,11 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlin.test.*
 
+private val json = Json { ignoreUnknownKeys = true }
+
 class CameraRoutesTest {
 
-    // ── Fake service ──────────────────────────────────────────────────────────
+    // ── Fake service (happy path) ─────────────────────────────────────────────
 
     private class FakeCameraService(
         private val cameras: MutableList<CameraDto> = mutableListOf(),
@@ -64,6 +66,48 @@ class CameraRoutesTest {
                 healthStatus = HealthStatus.HEALTHY, isActive = true
             )
         }
+    }
+
+    // ── Fake service (throws on every call) ───────────────────────────────────
+
+    private class ThrowingCameraService : CameraServicePort {
+        override suspend fun getAll() = throw RuntimeException("Firestore unavailable")
+        override suspend fun getById(id: String) = throw RuntimeException("Firestore unavailable")
+        override suspend fun create(dto: CameraDto) = throw RuntimeException("Firestore unavailable")
+        override suspend fun update(id: String, dto: CameraDto) = throw RuntimeException("Firestore unavailable")
+        override suspend fun delete(id: String) = throw RuntimeException("Firestore unavailable")
+        override suspend fun getDailyStats(cameraId: String, date: String) = throw RuntimeException("Firestore unavailable")
+        override suspend fun getDailyStatsForAll(date: String) = throw RuntimeException("Firestore unavailable")
+        override suspend fun getGlobalDailyCaptureRate(date: String) = throw RuntimeException("Firestore unavailable")
+        override suspend fun getCameraHealthCheck(cameraId: String, date: String) = throw RuntimeException("Firestore unavailable")
+        override suspend fun getAllCameraHealthChecks(date: String) = throw RuntimeException("Firestore unavailable")
+        override suspend fun getMonitoringDashboard(date: String) = throw RuntimeException("Firestore unavailable")
+    }
+
+    // ── Fake service (empty fleet) ─────────────────────────────────────────────
+
+    private class EmptyFleetCameraService : CameraServicePort {
+        override suspend fun getAll() = emptyList<CameraDto>()
+        override suspend fun getById(id: String) = null
+        override suspend fun create(dto: CameraDto) = "new-id"
+        override suspend fun update(id: String, dto: CameraDto) = false
+        override suspend fun delete(id: String) = false
+        override suspend fun getDailyStats(cameraId: String, date: String) = null
+        override suspend fun getDailyStatsForAll(date: String) = emptyList<CameraDailyStatsDto>()
+        override suspend fun getGlobalDailyCaptureRate(date: String) = GlobalDailyCaptureRateDto(
+            date = date, totalCameras = 0, activeCameras = 0,
+            expectedImagesTotal = 0, receivedImagesTotal = 0,
+            missingImagesTotal = 0, extraImagesTotal = 0, captureRate = 0.0
+        )
+        override suspend fun getCameraHealthCheck(cameraId: String, date: String) = null
+        override suspend fun getAllCameraHealthChecks(date: String) = emptyList<CameraHealthCheckDto>()
+        override suspend fun getMonitoringDashboard(date: String) = CameraMonitoringDashboardDto(
+            date = date, totalCameras = 0, activeCameras = 0,
+            expectedImagesTotal = 0, receivedImagesTotal = 0,
+            missingImagesTotal = 0, extraImagesTotal = 0, globalCaptureRate = 0.0,
+            healthyCameras = 0, cautionCameras = 0, riskCameras = 0,
+            healthyRate = 0.0, operationalRate = 0.0, cameras = emptyList()
+        )
     }
 
     // ── Test application builder ───────────────────────────────────────────────
@@ -186,10 +230,13 @@ class CameraRoutesTest {
     // ── GET /cameras/{id}/health-check/{date} ────────────────────────────────
 
     @Test
-    fun `GET camera health-check with valid date returns 200`() = testApp {
+    fun `GET camera health-check with valid date returns 200 with typed fields`() = testApp {
         val response = client.get("/cameras/cam-1/health-check/2026-03-17")
         assertEquals(HttpStatusCode.OK, response.status)
-        assertTrue(response.bodyAsText().contains("SALUDABLE"))
+        // P37: decode to DTO and assert on typed field — not brittle string match
+        val dto = json.decodeFromString<CameraHealthCheckDto>(response.bodyAsText())
+        assertEquals(HealthStatus.HEALTHY, dto.healthStatus)
+        assertEquals("cam-1", dto.cameraId)
     }
 
     @Test
@@ -211,10 +258,21 @@ class CameraRoutesTest {
     // ── GET /cameras/health-checks/{date} ────────────────────────────────────
 
     @Test
-    fun `GET all health-checks with valid date returns 200`() = testApp {
+    fun `GET all health-checks with valid date returns 200 with typed fields`() = testApp {
         val response = client.get("/cameras/health-checks/2026-03-17")
         assertEquals(HttpStatusCode.OK, response.status)
-        assertTrue(response.bodyAsText().contains("SALUDABLE"))
+        // P37: decode to typed list — not brittle string match
+        val dtos = json.decodeFromString<List<CameraHealthCheckDto>>(response.bodyAsText())
+        assertEquals(1, dtos.size)
+        assertEquals(HealthStatus.HEALTHY, dtos.first().healthStatus)
+    }
+
+    @Test
+    fun `GET all health-checks returns empty list for empty fleet`() = testApp(EmptyFleetCameraService()) {
+        val response = client.get("/cameras/health-checks/2026-03-17")
+        assertEquals(HttpStatusCode.OK, response.status)
+        val dtos = json.decodeFromString<List<CameraHealthCheckDto>>(response.bodyAsText())
+        assertTrue(dtos.isEmpty())
     }
 
     @Test
@@ -238,5 +296,50 @@ class CameraRoutesTest {
         val response = client.get("/cameras/dashboard/today")
         assertEquals(HttpStatusCode.BadRequest, response.status)
         assertTrue(response.bodyAsText().contains("yyyy-MM-dd"))
+    }
+
+    @Test
+    fun `GET dashboard with empty fleet returns 200 with zero counts`() = testApp(EmptyFleetCameraService()) {
+        val response = client.get("/cameras/dashboard/2026-03-17")
+        assertEquals(HttpStatusCode.OK, response.status)
+        val dto = json.decodeFromString<CameraMonitoringDashboardDto>(response.bodyAsText())
+        assertEquals(0, dto.totalCameras)
+        assertEquals(0, dto.healthyCameras)
+    }
+
+    // ── P38: impossible calendar dates rejected ────────────────────────────────
+
+    @Test
+    fun `GET dashboard rejects impossible date 2026-13-45`() = testApp {
+        val response = client.get("/cameras/dashboard/2026-13-45")
+        assertEquals(HttpStatusCode.BadRequest, response.status)
+    }
+
+    @Test
+    fun `GET health-checks rejects February 30`() = testApp {
+        val response = client.get("/cameras/health-checks/2026-02-30")
+        assertEquals(HttpStatusCode.BadRequest, response.status)
+    }
+
+    // ── P38: service failure returns 500 with structured error ─────────────────
+
+    @Test
+    fun `GET dashboard returns 500 when service throws`() = testApp(ThrowingCameraService()) {
+        val response = client.get("/cameras/dashboard/2026-03-17")
+        assertEquals(HttpStatusCode.InternalServerError, response.status)
+        assertTrue(response.bodyAsText().contains("error"))
+    }
+
+    @Test
+    fun `GET all health-checks returns 500 when service throws`() = testApp(ThrowingCameraService()) {
+        val response = client.get("/cameras/health-checks/2026-03-17")
+        assertEquals(HttpStatusCode.InternalServerError, response.status)
+        assertTrue(response.bodyAsText().contains("error"))
+    }
+
+    @Test
+    fun `GET global-daily-rate returns 500 when service throws`() = testApp(ThrowingCameraService()) {
+        val response = client.get("/cameras/global-daily-rate/2026-03-17")
+        assertEquals(HttpStatusCode.InternalServerError, response.status)
     }
 }
