@@ -102,7 +102,9 @@ class AlertService : AlertServicePort {
             id = id,
             captureId = id,
             cameraId = getString("cameraId") ?: "",
-            createdAt = getTimestamp("syncedAt")?.toDate()?.time
+            createdAt = getTimestamp("captureTime")?.toDate()?.time
+                ?: getLong("captureTime")
+                ?: getTimestamp("syncedAt")?.toDate()?.time
                 ?: getLong("syncedAt")
                 ?: 0L,
             status = AlertStatus.OPEN.name,
